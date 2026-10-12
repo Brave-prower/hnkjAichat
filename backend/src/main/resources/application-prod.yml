@@ -1,0 +1,23 @@
+# 生产环境：关闭 SQL 打印，收紧日志，连接池交给环境变量覆盖
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: warn
+    com.hnkj.qa: info
+  file:
+    name: ./logs/campus-qa.log
+
+campus:
+  storage:
+    local-path: /data/campus-qa/documents

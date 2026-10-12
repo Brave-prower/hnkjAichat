@@ -1,0 +1,69 @@
+@use './variables.scss';
+
+/* ---------- 基础重置 ---------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  font-size: 14px;
+  color: var(--app-text-primary);
+  background-color: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+
+/* ---------- 通用布局类 ---------- */
+.page-container {
+  padding: 20px;
+}
+
+.card-panel {
+  background: var(--app-card-bg);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 20px;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text-secondary {
+  color: var(--app-text-secondary);
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9cdd4;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a9aeb8;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

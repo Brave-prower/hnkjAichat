@@ -1,0 +1,16 @@
+# 开发环境：打印 SQL，便于调试
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+
+logging:
+  level:
+    com.hnkj.qa: debug
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+campus:
+  storage:
+    local-path: ./storage/documents

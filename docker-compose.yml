@@ -1,0 +1,25 @@
+services:
+  postgres:
+    # 官方 pgvector 镜像：PostgreSQL 16 + vector 扩展
+    image: pgvector/pgvector:pg16
+    container_name: campus-qa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campus_qa
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 首次启动自动执行：创建 vector 扩展
+      - ./docs/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d campus_qa"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

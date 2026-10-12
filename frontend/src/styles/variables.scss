@@ -1,0 +1,20 @@
+// 全局设计变量（可在组件中通过 var(--xxx) 使用）
+:root {
+  --app-primary: #1f6feb;
+  --app-primary-light: #e8f1ff;
+  --app-success: #17a673;
+  --app-warning: #e6a23c;
+  --app-danger: #d64545;
+
+  --app-bg: #f5f7fa;
+  --app-card-bg: #ffffff;
+  --app-border: #e4e7ed;
+
+  --app-text-primary: #1f2329;
+  --app-text-regular: #4e5969;
+  --app-text-secondary: #86909c;
+
+  --app-radius: 8px;
+  --app-header-height: 60px;
+  --app-sider-width: 220px;
+}
