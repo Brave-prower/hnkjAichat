@@ -41,4 +41,4 @@ application-local.yml
 
 # ---------- 工具 ----------
 .workbuddy/
-%ProgramData%/WorkBuddy/
+%ProgramData%/
