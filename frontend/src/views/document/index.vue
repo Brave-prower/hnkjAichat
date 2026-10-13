@@ -54,7 +54,7 @@ function handleReset() {
   loadList()
 }
 
-/** 自定义上传：交给后端 /documents/upload */
+/** 自定义上传：交给后端 POST /api/upload */
 async function customUpload(options) {
   const { file, onSuccess, onError } = options
   if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -65,13 +65,15 @@ async function customUpload(options) {
 
   uploading.value = true
   try {
-    await uploadDocument(file, file.name.replace(/\.pdf$/i, ''))
-    ElMessage.success('上传成功，正在后台解析')
+    const result = await uploadDocument(file)
+    ElMessage.success(
+      `上传成功，已提取 ${result?.textLength ?? 0} 个字符（详见后端控制台）`
+    )
     onSuccess?.({})
     loadList()
   } catch (e) {
     onError?.(e)
-    ElMessage.error('上传失败（后端上传接口待实现）')
+    ElMessage.error('上传失败，请稍后重试')
   } finally {
     uploading.value = false
   }

@@ -1,8 +1,13 @@
 package com.hnkj.qa.ai;
 
+import com.hnkj.qa.common.enums.ErrorCode;
+import com.hnkj.qa.common.exception.BizException;
 import com.hnkj.qa.config.properties.QaProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
@@ -10,12 +15,15 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
- * PDF 入库管线：读取 → 按页切分 → 向量化写入。
+ * PDF 解析与入库管线。
  *
- * <p>骨架版本：仅定义流程与元数据约定，具体实现待填充。</p>
+ * <p><b>当前阶段</b>：提供 {@link #extract(Path)}，使用 Apache PDFBox 提取全文并打印到控制台，
+ * 暂不写入向量库；后续再启用 {@link #ingest(Resource, Long, String)} 完成向量化。</p>
  *
  * <p><b>页码溯源关键点</b>：{@link PagePdfDocumentReader} 会在每个 Document 的 metadata
  * 中写入 {@code page_number}（从 1 开始）。在切分后需要把该字段透传到每个文本块，
@@ -35,6 +43,47 @@ public class PdfIngestService {
 
     private final VectorStore vectorStore;
     private final QaProperties qaProperties;
+
+    /**
+     * PDF 提取结果。
+     *
+     * @param text      提取出的全文
+     * @param pageCount 页数
+     */
+    public record PdfContent(String text, int pageCount) {
+    }
+
+    /**
+     * 使用 Apache PDFBox 提取 PDF 全文，并打印到控制台。
+     *
+     * <p>当前阶段仅用于验证解析链路，暂不写入向量库。</p>
+     *
+     * @param pdfFile 本地 PDF 文件
+     * @return 全文与页数
+     * @throws BizException 文件损坏或无法解析时抛出 DOCUMENT_PARSE_FAILED
+     */
+    public PdfContent extract(Path pdfFile) {
+        try (PDDocument document = Loader.loadPDF(pdfFile.toFile())) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            String text = stripper.getText(document);
+            int pageCount = document.getNumberOfPages();
+
+            log.info("===== PDF 文字提取开始：{}（共 {} 页，{} 字符）=====",
+                    pdfFile.getFileName(), pageCount, text.length());
+            if (text.isBlank()) {
+                log.warn("未提取到文字，可能是扫描版/图片型 PDF：{}", pdfFile.getFileName());
+            } else {
+                // 需求 4：把提取的文字打印到控制台
+                log.info("提取内容：\n{}", text.trim());
+            }
+            log.info("===== PDF 文字提取结束 =====");
+
+            return new PdfContent(text, pageCount);
+        } catch (IOException e) {
+            throw new BizException(ErrorCode.DOCUMENT_PARSE_FAILED,
+                    "PDF 解析失败：" + e.getMessage(), e);
+        }
+    }
 
     /**
      * 解析 PDF 并写入向量库。

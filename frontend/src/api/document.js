@@ -1,11 +1,10 @@
 import request from './request'
 
-/** 上传规章制度 PDF */
-export function uploadDocument(file, title) {
+/** 上传规章制度 PDF（后端保存到 uploads/ 并用 PDFBox 提取文字） */
+export function uploadDocument(file) {
   const formData = new FormData()
   formData.append('file', file)
-  if (title) formData.append('title', title)
-  return request.post('/documents/upload', formData, {
+  return request.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }

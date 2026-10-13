@@ -14,25 +14,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 规章制度文档接口。
+ *
+ * <p>上传接口见 {@link UploadController}（POST /upload），此处仅保留查询与维护操作。</p>
  */
-@Tag(name = "文档管理", description = "规章制度 PDF 的上传、查询、删除与重建索引")
+@Tag(name = "文档管理", description = "规章制度 PDF 的查询、删除与重建索引")
 @RestController
 @RequestMapping("/documents")
 @RequiredArgsConstructor
 public class DocumentController {
 
     private final DocumentService documentService;
-
-    @Operation(summary = "上传规章制度 PDF")
-    @PostMapping("/upload")
-    public ApiResponse<DocumentVO> upload(@RequestParam("file") MultipartFile file,
-                                          @RequestParam(value = "title", required = false) String title) {
-        return ApiResponse.ok(documentService.upload(file, title));
-    }
 
     @Operation(summary = "分页查询文档")
     @GetMapping

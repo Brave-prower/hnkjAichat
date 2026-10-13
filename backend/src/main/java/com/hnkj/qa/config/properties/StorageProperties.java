@@ -13,6 +13,6 @@ public class StorageProperties {
     /** 存储类型：local / minio / oss */
     private String type = "local";
 
-    /** 本地存储根目录 */
-    private String localPath = "./storage/documents";
+    /** 本地存储根目录（PDF 上传落盘位置） */
+    private String localPath = "./uploads";
 }

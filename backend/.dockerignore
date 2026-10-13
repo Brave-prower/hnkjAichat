@@ -1,0 +1,17 @@
+# 减小构建上下文，加快构建、避免敏感文件入库
+target/
+*.jar
+*.war
+uploads/
+.idea/
+.vscode/
+*.iml
+.git/
+.gitignore
+.mvn/
+mvnw
+mvnw.cmd
+Dockerfile
+.dockerignore
+README.md
+docs/

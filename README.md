@@ -104,6 +104,9 @@ docker compose up -d
 
 默认连接信息：`localhost:5432`，库 `campus_qa`，账号 `postgres` / `postgres`。
 
+> **本机没有 Docker？** 可原生安装 PostgreSQL 16 + pgvector，无需容器：
+> 参见 **[docs/local-db-setup.md](docs/local-db-setup.md)**。
+
 ### 2. 启动后端
 
 ```bash
@@ -127,6 +130,23 @@ npm run dev
 
 - 访问地址：http://localhost:5173
 
+### 4. 一键全栈（Docker）
+
+若想把数据库、后端、前端一起用容器跑起来：
+
+```bash
+# 项目根目录
+docker compose up -d --build
+```
+
+| 入口 | 地址 |
+| --- | --- |
+| 前端 | http://localhost |
+| 后端接口文档 | http://localhost/api/swagger-ui.html |
+| 数据库 | `localhost:5432`（外部工具可直连） |
+
+大模型 Key 可通过项目根目录 `.env` 文件或环境变量 `OPENAI_API_KEY` 传入。
+
 ---
 
 ## 四、环境变量
@@ -141,14 +161,24 @@ npm run dev
 
 ---
 
-## 五、核心业务流程（待实现）
+## 五、当前进度与核心业务流程
 
-1. **上传**：学生端上传学校规章制度 PDF → 存入对象存储/本地目录，落库文档元信息。
-2. **解析**：PDFBox / Spring AI `PagePdfDocumentReader` 提取文本，**按页保留页码元数据**。
-3. **切分**：`TokenTextSplitter` 切块，每块携带 `documentId` + `pageNumber`。
-4. **向量化**：Embedding 模型生成向量，写入 pgvector。
-5. **检索**：问题向量化 → 相似度检索 Top-K → 组装上下文。
-6. **生成**：Prompt 约束模型「仅依据上下文作答」，并要求输出引用页码。
-7. **返回**：答案 + 来源列表（文档名、页码、原文片段）。
+### 已实现
+
+- **PDF 上传接口**：`POST /api/upload`（字段名 `file`，multipart/form-data）
+  - 保存到 `backend/uploads/` 目录（带时间戳前缀防重名）
+  - 用 Apache PDFBox 提取全文并打印到控制台（暂不写向量库）
+  - 返回：`{ code, message, data: { fileName, storedName, textLength, pageCount } }`
+  - 测试：`curl -F "file=@某规章制度.pdf" http://localhost:8080/api/upload`
+- 提取逻辑有单元测试覆盖：`PdfIngestServiceTest`（现场生成 PDF → 提取 → 断言）
+
+### 待实现（业务路线）
+
+1. **落库**：上传后保存 `t_document` 元信息记录。
+2. **切分**：`TokenTextSplitter` 切块，每块携带 `documentId` + `pageNumber`。
+3. **向量化**：Embedding 模型生成向量，写入 pgvector。
+4. **检索**：问题向量化 → 相似度检索 Top-K → 组装上下文。
+5. **生成**：Prompt 约束模型「仅依据上下文作答」，并要求输出引用页码。
+6. **返回**：答案 + 来源列表（文档名、页码、原文片段）。
 
 详见 `docs/architecture.md`。

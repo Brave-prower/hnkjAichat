@@ -83,7 +83,7 @@ campus:
   storage:
     # 本地存储目录（后续可替换为 MinIO/OSS）
     type: local
-    local-path: ./storage/documents
+    local-path: ./uploads
 
 # ---------- 接口文档 ----------
 springdoc:

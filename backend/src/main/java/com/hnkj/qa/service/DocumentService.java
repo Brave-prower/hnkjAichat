@@ -2,6 +2,7 @@ package com.hnkj.qa.service;
 
 import com.hnkj.qa.common.api.PageResult;
 import com.hnkj.qa.dto.response.DocumentVO;
+import com.hnkj.qa.dto.response.UploadResult;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -10,13 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 public interface DocumentService {
 
     /**
-     * 上传 PDF 并触发解析、切分、向量化流程。
+     * 上传 PDF：保存到 uploads/ 目录，用 PDFBox 提取文字并打印到控制台。
+     * 当前阶段不写入向量库。
      *
-     * @param file  上传的 PDF 文件
-     * @param title 文档标题，为空时取文件名
-     * @return 文档信息
+     * @param file 上传的 PDF 文件
+     * @return 文件名与提取的文字长度
      */
-    DocumentVO upload(MultipartFile file, String title);
+    UploadResult upload(MultipartFile file);
 
     /**
      * 分页查询文档列表。

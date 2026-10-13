@@ -1,6 +1,15 @@
+# =====================================================
+# 校园问答系统 - 全栈 Docker Compose
+# 服务：PostgreSQL+pgvector  /  Spring Boot 后端  /  Vue 前端（Nginx）
+# 启动：docker compose up -d
+# 访问：http://localhost              -> 前端
+#       http://localhost/api/swagger-ui.html -> 后端接口文档
+#       localhost:5432                -> 数据库（外部工具可直连）
+# =====================================================
+
 services:
+  # -------------------- 数据库 --------------------
   postgres:
-    # 官方 pgvector 镜像：PostgreSQL 16 + vector 扩展
     image: pgvector/pgvector:pg16
     container_name: campus-qa-postgres
     restart: unless-stopped
@@ -13,13 +22,74 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # 首次启动自动执行：创建 vector 扩展
+      # 首次启动自动启用 pgvector 扩展
       - ./docs/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d campus_qa"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - campus-net
 
+  # -------------------- 后端 --------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: campus-qa/backend:1.0.0
+    container_name: campus-qa-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 数据库连接（用 compose 服务名作为主机名）
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: campus_qa
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+
+      # Spring AI / 大模型（请按需覆盖）
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-demo-key}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gpt-4o-mini}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-text-embedding-3-small}
+
+      # 运行环境（容器内固定为 dev，便于调试；生产建议另写 profile）
+      SPRING_PROFILES_ACTIVE: dev
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    volumes:
+      # 上传文件持久化（容器重建不丢）
+      - campus-uploads:/app/uploads
+    networks:
+      - campus-net
+
+  # -------------------- 前端 --------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: campus-qa/frontend:1.0.0
+    container_name: campus-qa-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # 浏览器只需记一个端口：80 -> Nginx -> 反代 /api 到 backend
+      - "80:80"
+    networks:
+      - campus-net
+
+# -------------------- 持久化卷 --------------------
 volumes:
   pgdata:
+  campus-uploads:
+
+# -------------------- 网络 --------------------
+networks:
+  campus-net:
+    driver: bridge
