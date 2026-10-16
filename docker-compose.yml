@@ -57,8 +57,9 @@ services:
       AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gpt-4o-mini}
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-text-embedding-3-small}
 
-      # 运行环境（容器内固定为 dev，便于调试；生产建议另写 profile）
-      SPRING_PROFILES_ACTIVE: dev
+      # 运行环境：local = 普通表 + Java 余弦检索（pgvector 镜像也能跑，无需扩展）
+      # 想在容器里验证 pgvector 方案时改为 railway
+      SPRING_PROFILES_ACTIVE: local
       TZ: Asia/Shanghai
     ports:
       - "8080:8080"

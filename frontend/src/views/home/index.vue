@@ -40,10 +40,16 @@ function go(path) {
       <p class="hero__subtitle">
         基于学校规章制度文档的智能问答，每个回答都可追溯原文与页码
       </p>
-      <el-button type="primary" size="large" @click="go('/qa')">
-        <el-icon><ChatDotRound /></el-icon>
-        开始提问
-      </el-button>
+      <div class="hero__actions">
+        <el-button type="primary" size="large" @click="go('/qa')">
+          <el-icon><ChatDotRound /></el-icon>
+          开始提问
+        </el-button>
+        <el-button size="large" class="hero__upload" @click="go('/document')">
+          <el-icon><UploadFilled /></el-icon>
+          上传规章制度 PDF
+        </el-button>
+      </div>
     </div>
 
     <!-- 功能入口 -->
@@ -104,6 +110,26 @@ function go(path) {
     margin: 10px 0 20px;
     font-size: 14px;
     opacity: 0.9;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+}
+
+.hero__upload.el-button {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--app-primary);
+  font-weight: 500;
+
+  &:hover,
+  &:focus {
+    background: #eef4ff;
+    border-color: #eef4ff;
+    color: var(--app-primary);
   }
 }
 

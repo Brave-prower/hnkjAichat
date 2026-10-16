@@ -12,11 +12,13 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -88,32 +90,54 @@ public class PdfIngestService {
     /**
      * 解析 PDF 并写入向量库。
      *
+     * <p>向量库由 Spring AI 的 {@link VectorStore} 接口抽象：
+     * local profile 走普通表 + 余弦检索，railway profile 走 pgvector，
+     * 本方法对两种实现透明。</p>
+     *
      * @param resource   PDF 资源
      * @param documentId 业务侧文档 ID
      * @param title      文档标题
      * @return 写入的文本块数量
      */
     public int ingest(Resource resource, Long documentId, String title) {
-        // TODO Step 1：按页读取，保留 page_number 元数据
+        // Step 1：按页读取，每页一个 Document，metadata 带 page_number（从 1 开始）
         PagePdfDocumentReader reader = new PagePdfDocumentReader(resource);
         List<Document> pages = reader.get();
 
-        // TODO Step 2：切分长文本（保持元数据不丢失）
+        // Step 2：切分长文本（TokenTextSplitter 会把父级元数据合并进每个文本块）
         TokenTextSplitter splitter = new TokenTextSplitter();
         List<Document> chunks = splitter.apply(pages);
 
-        // TODO Step 3：补充业务元数据（documentId / title）
-        // TODO Step 4：vectorStore.add(chunks)
-        // TODO Step 5：返回 chunks.size()
-        log.info("待实现：文档 [{}] 解析入库，共 {} 页", title, pages.size());
-        return 0;
+        // Step 3：补充业务元数据（documentId / title），保留原 page_number
+        String documentIdStr = String.valueOf(documentId);
+        List<Document> enriched = chunks.stream()
+                .map(chunk -> Document.builder()
+                        .id(chunk.getId())
+                        .text(chunk.getText())
+                        .metadata(new HashMap<>(chunk.getMetadata()))
+                        .metadata(META_DOCUMENT_ID, documentIdStr)
+                        .metadata(META_TITLE, title)
+                        .build())
+                .toList();
+
+        // Step 4：向量入库（向量化由 VectorStore 实现内部调用 EmbeddingModel 完成）
+        vectorStore.add(enriched);
+        log.info("文档 [{}] 向量入库完成：{} 页 → {} 个文本块", title, pages.size(), enriched.size());
+        return enriched.size();
     }
 
     /**
      * 按文档 ID 删除向量库中的全部片段。
+     *
+     * <p>local 实现：DELETE FROM t_vector_chunk WHERE metadata->>'documentId' = ?；<br>
+     * pgvector 实现：等价的 delete filter 表达式。</p>
      */
     public void deleteByDocumentId(Long documentId) {
-        // TODO vectorStore.delete("documentId == " + documentId)
-        log.info("待实现：清理文档 [{}] 的向量数据", documentId);
+        Filter.Expression filter = new Filter.Expression(
+                Filter.ExpressionType.EQ,
+                new Filter.Key(META_DOCUMENT_ID),
+                new Filter.Value(String.valueOf(documentId)));
+        vectorStore.delete(filter);
+        log.info("已清理文档 [{}] 的全部向量数据", documentId);
     }
 }

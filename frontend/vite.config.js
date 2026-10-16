@@ -20,8 +20,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       open: true,
       proxy: {
-        // 后端 context-path 为 /api，因此不做 rewrite
-        // SSE 流式接口需要关闭缓冲
+        // 后端 context-path 为 /api，因此不做 rewrite。
+        // SSE(/qa/ask/stream) 依赖默认的流式透传：node-http-proxy 不缓冲响应体，
+        // 切勿给 '/api' 开启 compression 或改写响应，否则增量会被攒到流结束才吐出。
         '/api': {
           target: env.VITE_API_TARGET || 'http://localhost:8080',
           changeOrigin: true,

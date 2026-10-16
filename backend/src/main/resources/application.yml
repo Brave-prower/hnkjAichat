@@ -11,7 +11,9 @@ spring:
   application:
     name: campus-qa
   profiles:
-    active: dev
+    # local：普通 PG 表 + Java 余弦检索（本机无 pgvector 也能跑）
+    # railway：pgvector 向量库（部署 Railway 时使用）
+    active: local
 
   # ---------- 文件上传 ----------
   servlet:
@@ -52,6 +54,14 @@ spring:
 
   # ---------- Spring AI ----------
   ai:
+    retry:
+      # Embedding 服务不可用时少重试几次：默认 10 次 + 指数退避，
+      # 会把一次提问拖到几十秒才落入关键词兜底
+      max-attempts: 2
+      backoff:
+        initial-interval: 500
+        multiplier: 2
+        max-interval: 2000
     openai:
       # 未配置环境变量时使用占位值，保证应用可正常启动
       api-key: ${OPENAI_API_KEY:demo-key}
@@ -74,8 +84,8 @@ spring:
 # ---------- 业务自定义配置 ----------
 campus:
   qa:
-    # 检索返回的片段数量
-    top-k: 5
+    # 检索返回的片段数量（余弦/pgvector 两种实现均生效）
+    top-k: 3
     # 相似度阈值（低于该值不作为参考）
     similarity-threshold: 0.6
     # 允许上传的文件类型
@@ -84,6 +94,19 @@ campus:
     # 本地存储目录（后续可替换为 MinIO/OSS）
     type: local
     local-path: ./uploads
+
+  # ---------- DeepSeek 大模型客户端 ----------
+  # 通过环境变量注入：DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / DEEPSEEK_MODEL
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+    model: ${DEEPSEEK_MODEL:deepseek-chat}
+    timeout-seconds: 60
+    temperature: 0.2
+    max-tokens: 2000
+    # 思考模式（思维链）。DeepSeek V4 默认开启且推理强度 high，思维链跑完才输出正文，
+    # 首字延迟显著变大；事实型制度问答关闭即可，需要深度推理时改为 true
+    thinking-enabled: false
 
 # ---------- 接口文档 ----------
 springdoc:

@@ -26,7 +26,7 @@ async function scrollToBottom() {
 }
 
 /**
- * 发送提问。骨架阶段：调用流式接口，接口未实现时会走 catch 分支。
+ * 发送提问：调用 SSE 流式接口，来源事件先到，正文增量随后。
  */
 async function handleSend() {
   const text = question.value.trim()
@@ -47,18 +47,25 @@ async function handleSend() {
   await scrollToBottom()
 
   try {
-    // TODO 后端 /qa/ask/stream 实现后即可正常渲染
     await askQuestionStream(
       { question: text, sessionId: chatStore.sessionId },
-      (chunk) => {
-        chatStore.appendChunk(chunk)
-        scrollToBottom()
+      {
+        onSources: (sources) => {
+          chatStore.setSources(sources)
+        },
+        onMessage: (chunk) => {
+          chatStore.appendChunk(chunk)
+          scrollToBottom()
+        }
       }
     )
   } catch (e) {
     const last = chatStore.messages[chatStore.messages.length - 1]
-    if (last && last.role === 'assistant' && !last.content) {
-      last.content = '智能问答接口尚未接通（后端业务逻辑待实现）。'
+    if (last && last.role === 'assistant') {
+      const reason = e?.message || '未知错误'
+      last.content = last.content
+        ? `${last.content}\n\n⚠️ 回答中断：${reason}`
+        : `⚠️ 问答请求失败：${reason}`
     }
   } finally {
     chatStore.loading = false

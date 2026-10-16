@@ -1,11 +1,12 @@
 import request from './request'
 
-/** 上传规章制度 PDF（后端保存到 uploads/ 并用 PDFBox 提取文字） */
+/** 上传规章制度 PDF（后端保存文件 → 切分 → 向量化入库，耗时较长故单独放宽超时） */
 export function uploadDocument(file) {
   const formData = new FormData()
   formData.append('file', file)
   return request.post('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000
   })
 }
 

@@ -35,9 +35,10 @@ RUN mkdir -p /app/uploads
 # Spring Boot 3 默认暴露 8080；显式声明便于阅读
 EXPOSE 8080
 
-# JVM 容器感知参数 + 默认 dev profile；可通过环境变量覆盖
+# JVM 容器感知参数 + 默认 local profile（普通表余弦检索，任何 PG 都能跑）；
+# 部署 Railway 时通过环境变量 SPRING_PROFILES_ACTIVE=railway 切回 pgvector
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError" \
-    SPRING_PROFILES_ACTIVE=dev
+    SPRING_PROFILES_ACTIVE=local
 
 # 容器健康检查：命中 Spring Boot Actuator 的健康端点
 # 注意：context-path=/api，所以应用内路径是 /api/actuator/health

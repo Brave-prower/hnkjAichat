@@ -27,4 +27,14 @@ public class UploadResult {
 
     @Schema(description = "PDF 页数", example = "12")
     private Integer pageCount;
+
+    @Schema(description = "文档 ID（已落库 t_document）", example = "1")
+    private Long documentId;
+
+    @Schema(description = "处理状态：READY（向量入库完成）/ FAILED（向量入库失败，文档已保存）",
+            example = "READY")
+    private String status;
+
+    @Schema(description = "向量入库的文本块数量（FAILED 时为 0）", example = "36")
+    private Integer chunkCount;
 }

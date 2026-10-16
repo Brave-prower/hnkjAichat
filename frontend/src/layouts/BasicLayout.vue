@@ -9,7 +9,8 @@ const router = useRouter()
 const menus = [
   { path: '/home', title: '首页', icon: 'HomeFilled' },
   { path: '/qa', title: '智能问答', icon: 'ChatDotRound' },
-  { path: '/document', title: '规章制度库', icon: 'Document' }
+  { path: '/document', title: '规章制度库', icon: 'Document' },
+  { path: '/upload', title: '上传规章制度', icon: 'UploadFilled' }
 ]
 
 const activeMenu = computed(() => route.path)

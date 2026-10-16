@@ -16,6 +16,12 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
     Page<Document> findAllByDeletedFalseOrderByCreatedAtDesc(Pageable pageable);
 
+    /** 标题模糊搜索（忽略大小写） */
+    Page<Document> findAllByDeletedFalseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+            String title, Pageable pageable);
+
+    Page<Document> findAllByDeletedFalse(Pageable pageable);
+
     Optional<Document> findByIdAndDeletedFalse(Long id);
 
     boolean existsByFileNameAndDeletedFalse(String fileName);

@@ -1,0 +1,33 @@
+# =====================================================
+# railway profile：部署 Railway 时使用，切回 pgvector 向量库
+#
+# 启用方式：环境变量 SPRING_PROFILES_ACTIVE=railway
+#
+# 前提：数据库必须启用 pgvector 扩展（Railway 默认 Postgres 模板不含该扩展，
+# 需使用带 pgvector 的镜像自建服务，或在数据库执行 CREATE EXTENSION vector;）
+# =====================================================
+
+spring:
+  # Railway Postgres 插件提供 PG* 环境变量；兼容本地 DB_* 变量覆盖
+  datasource:
+    url: jdbc:postgresql://${PGHOST:${DB_HOST:localhost}}:${PGPORT:${DB_PORT:5432}}/${PGDATABASE:${DB_NAME:campus_qa}}
+    username: ${PGUSER:${DB_USERNAME:postgres}}
+    password: ${PGPASSWORD:${DB_PASSWORD:postgres}}
+
+  jpa:
+    show-sql: false
+    hibernate:
+      # 结构由 Flyway + PgVectorStore(initialize-schema) 管理
+      ddl-auto: validate
+
+logging:
+  level:
+    root: info
+    com.hnkj.qa: info
+  file:
+    name: ./logs/campus-qa.log
+
+campus:
+  storage:
+    # Railway 挂载持久卷的路径（Railway 服务设置中挂载 /data 即可持久化）
+    local-path: /data/uploads

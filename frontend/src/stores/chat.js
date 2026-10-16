@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 /**
  * 问答会话状态。
- * 骨架阶段仅提供最小能力，真正的发送逻辑待接入接口后补充。
+ * 会话与消息都保存在内存中，刷新页面即清空（历史落库后改为从后端拉取）。
  */
 export const useChatStore = defineStore('chat', () => {
   /** 会话标识，首次提问时由后端返回 */
@@ -31,6 +31,14 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /** 给最后一条 assistant 消息挂上引用来源（来源事件先于正文到达） */
+  function setSources(sources) {
+    const last = messages.value[messages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.sources = sources || []
+    }
+  }
+
   function clear() {
     messages.value = []
     sessionId.value = ''
@@ -43,6 +51,7 @@ export const useChatStore = defineStore('chat', () => {
     setSessionId,
     appendMessage,
     appendChunk,
+    setSources,
     clear
   }
 })

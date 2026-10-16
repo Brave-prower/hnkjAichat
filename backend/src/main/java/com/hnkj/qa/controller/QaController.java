@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -36,9 +36,16 @@ public class QaController {
         return ApiResponse.ok(qaService.ask(request));
     }
 
+    /**
+     * SSE 流式问答。
+     *
+     * <p>这里刻意不加 {@code @Valid}：参数校验失败时全局异常处理器会写 JSON 错误体，
+     * 而客户端声明的是 {@code Accept: text/event-stream}，两者冲突会导致 406。
+     * 校验改在 {@link QaService#askStream} 内部完成，错误通过 {@code error} 事件回传。</p>
+     */
     @Operation(summary = "提问（SSE 流式返回）")
     @PostMapping(value = "/ask/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> askStream(@Valid @RequestBody AskRequest request) {
+    public SseEmitter askStream(@RequestBody(required = false) AskRequest request) {
         return qaService.askStream(request);
     }
 

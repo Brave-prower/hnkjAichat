@@ -66,9 +66,15 @@ async function customUpload(options) {
   uploading.value = true
   try {
     const result = await uploadDocument(file)
-    ElMessage.success(
-      `上传成功，已提取 ${result?.textLength ?? 0} 个字符（详见后端控制台）`
-    )
+    if (result?.status === 'FAILED') {
+      ElMessage.warning(
+        '文件已保存，但向量化失败（请检查 Embedding API Key 配置），可稍后点“重建索引”重试'
+      )
+    } else {
+      ElMessage.success(
+        `上传成功：已切分 ${result?.chunkCount ?? 0} 个文本块并建立索引`
+      )
+    }
     onSuccess?.({})
     loadList()
   } catch (e) {
@@ -94,7 +100,7 @@ async function handleDelete(row) {
     ElMessage.success('删除成功')
     loadList()
   } catch (e) {
-    ElMessage.error('删除失败（后端接口待实现）')
+    ElMessage.error('删除失败，请稍后重试')
   }
 }
 
@@ -104,7 +110,7 @@ async function handleReindex(row) {
     ElMessage.success('已触发重建索引')
     loadList()
   } catch (e) {
-    ElMessage.error('重建索引失败（后端接口待实现）')
+    ElMessage.error('重建索引失败，请检查后端日志')
   }
 }
 
@@ -121,7 +127,7 @@ onMounted(loadList)
           accept=".pdf"
           :disabled="uploading"
         >
-          <el-button type="primary" :loading="uploading">
+          <el-button type="primary" size="large" :loading="uploading">
             <el-icon><UploadFilled /></el-icon>
             上传 PDF
           </el-button>

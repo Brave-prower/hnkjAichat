@@ -24,6 +24,12 @@ const routes = [
         name: 'Document',
         component: () => import('@/views/document/index.vue'),
         meta: { title: '规章制度库', icon: 'Document' }
+      },
+      {
+        path: 'upload',
+        name: 'Upload',
+        component: () => import('@/views/upload/index.vue'),
+        meta: { title: '上传规章制度', icon: 'UploadFilled' }
       }
     ]
   },

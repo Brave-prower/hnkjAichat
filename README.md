@@ -153,32 +153,50 @@ docker compose up -d --build
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE` | 运行模式：`local`（普通表+余弦检索）/ `railway`（pgvector） | `local` |
 | `OPENAI_API_KEY` | 大模型 API Key | `demo-key` |
 | `OPENAI_BASE_URL` | 接口地址（兼容 OpenAI 协议均可） | `https://api.openai.com` |
 | `DB_HOST` / `DB_PORT` | 数据库地址 | `localhost` / `5432` |
 | `DB_NAME` | 数据库名 | `campus_qa` |
 | `DB_USERNAME` / `DB_PASSWORD` | 数据库账号 | `postgres` / `postgres` |
+| `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` | Railway Postgres 插件自动注入的变量（railway profile 优先使用） | - |
 
 ---
 
-## 五、当前进度与核心业务流程
+## 五、向量存储：双模式（本机免 pgvector）
+
+本机 Windows 装不上 pgvector 扩展也没关系，系统内置两套向量存储，按 profile 一键切换，**业务代码完全一致**：
+
+| | `local`（默认） | `railway` |
+| --- | --- | --- |
+| 向量存储 | 普通表 `t_vector_chunk`（embedding 以 JSONB 数组保存） | pgvector `vector_store` 表（HNSW 索引） |
+| 相似度计算 | Java 侧余弦相似度，取 Top-K | pgvector 数据库内计算 |
+| 是否需要 pgvector 扩展 | **不需要**（纯普通 PostgreSQL） | 需要（`CREATE EXTENSION vector;`） |
+| 适用场景 | 本地开发、Docker、任何 PG | Railway / 生产部署 |
+
+- 切换方式：`SPRING_PROFILES_ACTIVE=railway`（默认 `local`）
+- 上传的 PDF 自动切分（`TokenTextSplitter`）→ 向量化（`text-embedding-3-small`）→ 入库，每个文本块带 `documentId` / `page_number` / `title` 元数据
+- 性能边界：local 模式全量加载 + 内存余弦计算，适合数百~数千文本块；数据量大了切 railway 模式
+- Railway 部署注意：Railway 默认 Postgres 模板**不含** pgvector，需用带 pgvector 的镜像自建数据库服务
+
+## 六、当前进度与核心业务流程
 
 ### 已实现
 
 - **PDF 上传接口**：`POST /api/upload`（字段名 `file`，multipart/form-data）
   - 保存到 `backend/uploads/` 目录（带时间戳前缀防重名）
-  - 用 Apache PDFBox 提取全文并打印到控制台（暂不写向量库）
-  - 返回：`{ code, message, data: { fileName, storedName, textLength, pageCount } }`
+  - 用 Apache PDFBox 提取全文并打印到控制台
+  - 文档元信息落库 `t_document`；随后**自动切分 + 向量化入库**（local: `t_vector_chunk` / railway: pgvector）
+  - 向量化失败不阻断上传：状态降级为 `FAILED`，可稍后调 `POST /api/documents/{id}/reindex` 重试
+  - 返回：`{ code, message, data: { fileName, storedName, textLength, pageCount, documentId, status, chunkCount } }`
   - 测试：`curl -F "file=@某规章制度.pdf" http://localhost:8080/api/upload`
-- 提取逻辑有单元测试覆盖：`PdfIngestServiceTest`（现场生成 PDF → 提取 → 断言）
+- **向量存储双模式**：`JdbcCosineVectorStore`（普通表 + Java 余弦 Top-3）与 pgvector 按 profile 切换
+- 提取与向量库均有单元测试覆盖：`PdfIngestServiceTest`、`JdbcCosineVectorStoreTest`（6 用例全绿）
 
 ### 待实现（业务路线）
 
-1. **落库**：上传后保存 `t_document` 元信息记录。
-2. **切分**：`TokenTextSplitter` 切块，每块携带 `documentId` + `pageNumber`。
-3. **向量化**：Embedding 模型生成向量，写入 pgvector。
-4. **检索**：问题向量化 → 相似度检索 Top-K → 组装上下文。
-5. **生成**：Prompt 约束模型「仅依据上下文作答」，并要求输出引用页码。
-6. **返回**：答案 + 来源列表（文档名、页码、原文片段）。
+1. **检索问答**：`RagQaService.answer` 补全——Top-K 检索 → 组装上下文 → 生成回答 + 引用页码（存储层已就绪，直接调 `vectorStore.similaritySearch`）。
+2. **文档管理**：`page / detail / delete / reindex` 接口补全，前端列表展示真实数据。
+3. 问答记录落库 `t_chat_record`、流式输出。
 
 详见 `docs/architecture.md`。
