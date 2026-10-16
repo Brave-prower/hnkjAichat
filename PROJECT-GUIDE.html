@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>项目地图 · 湖南科技职业学院校园问答系统</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-soft: #eef4ff;
+    --blue-border: #c9daf9;
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --border: #e6eaf1;
+    --text: #1b2430;
+    --text-2: #46536b;
+    --text-3: #8a94a6;
+    --shadow: 0 2px 10px rgba(27,36,48,.06);
+    --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 顶部横幅 ---------- */
+  .banner {
+    background: linear-gradient(135deg, #2563eb 0%, #4c8dff 100%);
+    color: #fff;
+    padding: 44px 24px 40px;
+    text-align: center;
+  }
+  .banner h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
+  .banner p { margin: 12px auto 0; max-width: 640px; font-size: 14px; opacity: .92; }
+  .banner code { background: rgba(255,255,255,.18); padding: 2px 7px; border-radius: 5px; font-family: var(--mono); font-size: 13px; }
+
+  /* ---------- 布局 ---------- */
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; display: flex; gap: 28px; align-items: flex-start; }
+  .toc {
+    position: sticky; top: 24px; flex: 0 0 232px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 14px; box-shadow: var(--shadow);
+  }
+  .toc__title { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-3); margin: 0 0 10px 4px; }
+  .toc__link {
+    display: block; padding: 6px 10px; margin-bottom: 2px;
+    font-size: 13.5px; color: var(--text-2); text-decoration: none;
+    border-radius: 7px; transition: .16s;
+  }
+  .toc__link:hover { background: var(--blue-soft); color: var(--blue); }
+
+  main {
+    flex: 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 36px 40px 44px; box-shadow: var(--shadow);
+  }
+
+  /* ---------- 正文排版 ---------- */
+  main > :first-child { margin-top: 0; }
+  main h1 { display: none; }
+  h2 {
+    margin: 44px 0 14px; padding-bottom: 10px; font-size: 21px;
+    border-bottom: 2px solid var(--blue-soft); scroll-margin-top: 20px;
+  }
+  h2::before { content: ""; display: inline-block; width: 4px; height: 17px; margin-right: 10px; background: var(--blue); border-radius: 2px; vertical-align: -2px; }
+  h3 { margin: 28px 0 10px; font-size: 16.5px; color: var(--text); }
+  p { margin: 0 0 12px; color: var(--text-2); }
+  strong { color: var(--text); font-weight: 600; }
+  a { color: var(--blue); }
+  hr { height: 1px; border: 0; background: var(--border); margin: 34px 0; }
+  ul, ol { padding-left: 24px; margin: 0 0 14px; color: var(--text-2); }
+  li { margin: 5px 0; }
+
+  /* 行内代码 */
+  code { padding: 2px 6px; font-family: var(--mono); font-size: 13px; color: #b02a5b; background: #f5f0f4; border-radius: 5px; }
+
+  /* 代码块（目录树） */
+  pre {
+    margin: 0 0 18px; padding: 16px 18px; overflow-x: auto;
+    background: #f7f9fc; border: 1px solid var(--border); border-radius: 10px;
+    line-height: 1.7;
+  }
+  pre code { padding: 0; color: var(--text-2); background: transparent; font-size: 13px; }
+
+  /* 表格 */
+  table { width: 100%; margin: 0 0 18px; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--blue-soft); font-weight: 600; color: var(--text); white-space: nowrap; }
+  tbody tr:nth-child(even) { background: #fbfcfe; }
+  tbody tr:hover { background: #f6f9ff; }
+
+  /* 引用块 */
+  blockquote {
+    margin: 0 0 16px; padding: 12px 18px; color: var(--text-2);
+    background: var(--blue-soft); border-left: 3px solid var(--blue);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+  blockquote code { background: #fff; }
+
+  /* 回到顶部 */
+  .top {
+    position: fixed; right: 26px; bottom: 26px; width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue); background: #fff; border: 1px solid var(--blue-border);
+    border-radius: 50%; box-shadow: var(--shadow); text-decoration: none;
+    font-size: 18px; transition: .16s;
+  }
+  .top:hover { background: var(--blue-soft); transform: translateY(-2px); }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 960px) {
+    .wrap { flex-direction: column; padding: 18px 14px 60px; }
+    .toc { position: static; flex: none; width: 100%; }
+    main { padding: 24px 18px 30px; }
+    .banner h1 { font-size: 23px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <h1>项目地图 · 每个文件是干什么的</h1>
+  <p>湖南科技职业学院 · 校园问答系统 —— 给第一次接触本项目的同学准备的"说明书"<br />
+  源文件：<code>PROJECT-GUIDE.md</code>（本页由其自动生成）</p>
+</div>
+
+<div class="wrap">
+  <nav class="toc">
+    <p class="toc__title">目录</p>
+    <a class="toc__link" href="#sec-0">一、先搞懂这个项目在做什么</a>
+<a class="toc__link" href="#sec-1">二、怎么把项目跑起来</a>
+<a class="toc__link" href="#sec-2">三、顶层目录总览</a>
+<a class="toc__link" href="#sec-3">四、后端：backend/ 目录</a>
+<a class="toc__link" href="#sec-4">五、前端：frontend/ 目录</a>
+<a class="toc__link" href="#sec-5">六、docs/ 与根目录其他文件</a>
+<a class="toc__link" href="#sec-6">七、小白最关心的几个问题</a>
+<a class="toc__link" href="#sec-7">八、名词速查表</a>
+<a class="toc__link" href="#sec-8">九、建议的上手路线</a>
+  </nav>
+  <main>
+<h1>项目地图 · 每个文件是干什么的</h1>
+<blockquote>
+<p>这份文档面向第一次接触本项目的同学。读完它，你会知道<strong>每个文件放在哪、干什么用、什么时候需要动它</strong>。</p>
+<p>项目：<strong>湖南科技职业学院 · 校园问答系统</strong>（把学校规章制度 PDF 变成能对话的问答机器人）</p>
+</blockquote>
+<hr>
+<h2 id="sec-0">一、先搞懂这个项目在做什么</h2>
+<p>用大白话讲，它做了这么一件事：</p>
+<pre><code>你把一份《学生管理规定》的 PDF 传上去
+        ↓
+系统把 PDF 里的文字全部抽出来，切成一小块一小块（叫&quot;文本块&quot;）
+        ↓
+每一块都换算成一串数字（叫&quot;向量&quot;），存进数据库
+        ↓
+你提问&quot;请销假怎么办手续？&quot;
+        ↓
+系统也把你的问题换算成数字，去数据库里找出&quot;方向和它最像&quot;的几块原文
+        ↓
+把这几块原文塞给 AI（DeepSeek），让它&quot;看着材料&quot;写答案
+        ↓
+答案 + 引用的原文页码，一起返回给你
+</code></pre>
+<p>这套做法有个专门的名字叫 <strong>RAG</strong>（检索增强生成）——先检索资料，再让 AI 基于资料回答。<strong>好处是 AI 不能瞎编</strong>，因为它的&quot;材料&quot;是你上传的制度原文，而且会标出页码，你可以去核对。</p>
+<h3>一句话架构</h3>
+<pre><code>浏览器(Vue 页面)  ←→  后端(Java Spring Boot)  ←→  数据库(PostgreSQL)
+                            ↓            ↑
+                       DeepSeek(写答案)  向量化服务(算数字)
+</code></pre>
+<hr>
+<h2 id="sec-1">二、怎么把项目跑起来</h2>
+<p><strong>需要两样东西</strong>：数据库 + 后端 + 前端（三个都要开着）。</p>
+<table>
+<thead>
+<tr>
+<th>第几步</th>
+<th>做什么</th>
+<th>命令 / 位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>启动数据库</td>
+<td>双击或运行 PostgreSQL，本机在 <code>D:\postgresql-18.6-5-windows-x64-binaries\pgsql</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>启动后端</td>
+<td>在 <code>backend</code> 目录执行 <code>mvn spring-boot:run</code>，或双击项目根目录的 <code>run-backend.ps1</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>启动前端</td>
+<td>在 <code>frontend</code> 目录执行 <code>npm run dev</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>打开浏览器</td>
+<td>访问 <code>http://localhost:5173</code></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>端口记住三个数</strong>：前端 <code>5173</code>、后端 <code>8080</code>、数据库 <code>5432</code>。</p>
+</blockquote>
+<hr>
+<h2 id="sec-2">三、顶层目录总览</h2>
+<p>打开项目文件夹，你会看到这些东西：</p>
+<pre><code>D:\hnjgAichat\
+├── backend/            ← 后端代码（Java，负责所有&quot;干活&quot;的逻辑）
+├── frontend/           ← 前端代码（Vue，负责所有&quot;给人看&quot;的界面）
+├── docs/               ← 项目文档（架构说明、数据库安装教程）
+├── docker-compose.yml  ← 一键用 Docker 起全套服务（本机 Docker 装不上，暂未使用）
+├── run-backend.ps1     ← 一键启动后端的脚本（Windows PowerShell）
+├── README.md           ← 项目说明书（GitHub 首页显示的那份）
+├── backend-run.log     ← 后端运行日志（出问题先看这里）
+├── frontend-run.log    ← 前端运行日志
+└── compile.log         ← 编译日志
+</code></pre>
+<p><strong>只有两个文件夹是你要关心的：<code>backend</code>（后端）和 <code>frontend</code>（前端）。</strong> 其他都是辅助文件。</p>
+<hr>
+<h2 id="sec-3">四、后端：<code>backend/</code> 目录</h2>
+<p>后端用的是 <strong>Java + Spring Boot</strong>。它的职责是：收文件、解析 PDF、算向量、查数据库、调 AI、把结果吐给前端。浏览器看不到它，但所有&quot;重活&quot;都是它干的。</p>
+<h3>4.1 整体分层思路（重要）</h3>
+<p>后端代码严格按<strong>职责分层</strong>，从外到内是这样的：</p>
+<pre><code>Controller（接客的）  →  Service（拿主意的）  →  Repository（管仓库的）
+                              ↓
+                        Entity（数据长什么样）
+                        DTO（对外传输的包裹）
+</code></pre>
+<ul>
+<li><strong>Controller</strong>：只负责&quot;接收请求、返回结果&quot;，不写业务逻辑。</li>
+<li><strong>Service</strong>：真正的业务逻辑在这里（比如&quot;上传后要先存文件再切分再向量化&quot;）。</li>
+<li><strong>Repository</strong>：只管和数据库打交道（增删改查）。</li>
+<li><strong>Entity</strong>：对应数据库里的一张表，一个对象 = 一行数据。</li>
+<li><strong>DTO</strong>：专门用来和前端的&quot;包裹&quot;，避免把数据库结构暴露出去。</li>
+</ul>
+<h3>4.2 启动类</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/main/java/com/hnkj/qa/HnkjQaApplication.java</code></td>
+<td><strong>整个后端的入口</strong>。你点&quot;启动后端&quot;就是运行它。相当于房子的总电闸</td>
+</tr>
+</tbody></table>
+<h3>4.3 <code>controller/</code> —— 对外提供的接口（前端会调这些）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+<th>对应前端哪里</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>UploadController.java</code></td>
+<td>接收 PDF 上传（<code>POST /api/upload</code>）</td>
+<td>上传页面</td>
+</tr>
+<tr>
+<td><code>DocumentController.java</code></td>
+<td>文档的查询、详情、删除、重建索引</td>
+<td>规章制度库页面</td>
+</tr>
+<tr>
+<td><code>QaController.java</code></td>
+<td>提问接口：普通问答 + 流式问答（边说边显示）</td>
+<td>智能问答页面</td>
+</tr>
+<tr>
+<td><code>HealthController.java</code></td>
+<td>健康检查（<code>/api/health</code>），用来确认&quot;后端还活着吗&quot;</td>
+<td>一般不直接用，运维用</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>小白理解</strong>：Controller 就是&quot;前台接待&quot;。你告诉它要干什么，它转身去找对应的 Service。</p>
+</blockquote>
+<h3>4.4 <code>service/</code> —— 业务逻辑（真正干活的）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>service/DocumentService.java</code></td>
+<td><strong>接口</strong>：规定文档服务能做哪些事（上传/分页/详情/删除/重建索引）</td>
+</tr>
+<tr>
+<td><code>service/impl/DocumentServiceImpl.java</code></td>
+<td><strong>实现</strong>：上面那些事的具体做法。<strong>你改&quot;上传后怎么处理&quot;就来这里</strong></td>
+</tr>
+<tr>
+<td><code>service/QaService.java</code></td>
+<td><strong>接口</strong>：规定问答服务能做哪些事</td>
+</tr>
+<tr>
+<td><code>service/impl/QaServiceImpl.java</code></td>
+<td><strong>实现</strong>：普通问答和流式问答的具体做法（流式问答就是&quot;打字机效果&quot;的实现处）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>为什么要拆成&quot;接口 + 实现&quot;？</strong> 这是 Java 项目的习惯写法，方便以后换实现、也方便写测试。看到 <code>XxxService</code> 和 <code>XxxServiceImpl</code> 成对出现，是正常现象。</p>
+</blockquote>
+<h3>4.5 <code>ai/</code> —— 人工智能相关（本项目最核心、也最特别的文件夹）</h3>
+<p>这是整个项目最有技术含量的地方，四个文件各管一件事：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ai/PdfIngestService.java</code></td>
+<td><strong>PDF 解析 + 切分</strong>。把 PDF 里的文字抽出来，切成一块一块，并<strong>记住每块来自第几页</strong>（这样回答才能标页码）</td>
+</tr>
+<tr>
+<td><code>ai/embedding/EmbeddingService.java</code></td>
+<td><strong>把文字变成数字</strong>。调用向量化服务（本项目用硅基流动的 <code>BAAI/bge-m3</code> 模型），输入一段文字，输出一串 1024 个数字</td>
+</tr>
+<tr>
+<td><code>ai/vector/JdbcCosineVectorStore.java</code></td>
+<td><strong>向量仓库</strong>。负责把向量存进数据库，以及提问时&quot;找出最像的几块&quot;。<strong>如果向量化服务坏了，它会自动降级成&quot;关键词搜索&quot;</strong>，保证系统还能用</td>
+</tr>
+<tr>
+<td><code>ai/deepseek/DeepSeekClient.java</code></td>
+<td><strong>和 AI 对话的客户端</strong>。负责把问题发到 DeepSeek，把 AI 写的答案收回来（支持逐字返回）</td>
+</tr>
+<tr>
+<td><code>ai/RagQaService.java</code></td>
+<td><strong>问答总指挥</strong>。串起全流程：检索资料 → 拼提示词 → 让 AI 写 → 整理引用来源。<strong>想让回答风格变化，先看这里</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>一句话记忆</strong>：PDF 进来找 <code>PdfIngestService</code>，文字变数字找 <code>EmbeddingService</code>，数字存哪儿找 <code>JdbcCosineVectorStore</code>，问 AI 找 <code>DeepSeekClient</code>，整个流水线归 <code>RagQaService</code> 管。</p>
+</blockquote>
+<h3>4.6 <code>entity/</code> —— 数据库表对应的 Java 类</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>对应数据库表</th>
+<th>存的是什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>entity/Document.java</code></td>
+<td><code>t_document</code></td>
+<td>你上传的每一份 PDF 的档案（标题、文件名、大小、页数、状态）</td>
+</tr>
+<tr>
+<td><code>entity/VectorChunk.java</code></td>
+<td><code>document_chunks</code></td>
+<td>切分出来的每一个文本块 + 它的向量数字</td>
+</tr>
+<tr>
+<td><code>entity/ChatRecord.java</code></td>
+<td><code>t_chat_record</code></td>
+<td>每一条问答记录（你问了什么、AI 答了什么）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>小白理解</strong>：数据库里的表看不见摸不着，这些 Java 类就是表的&quot;遥控器&quot;。改表结构 → 改这里。</p>
+</blockquote>
+<h3>4.7 <code>repository/</code> —— 数据库操作（增删改查）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>管哪张表</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>repository/DocumentRepository.java</code></td>
+<td>文档表：查列表、按标题搜、删除</td>
+</tr>
+<tr>
+<td><code>repository/VectorChunkRepository.java</code></td>
+<td>文本块表：存向量、取向量、按文档清理</td>
+</tr>
+<tr>
+<td><code>repository/ChatRecordRepository.java</code></td>
+<td>问答记录表：存历史、按会话查</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这些文件通常很短，因为 Spring Data JPA 会自动生成 SQL。你只要按命名规则写个方法名（比如 <code>findByStatus</code>），它就懂。</p>
+</blockquote>
+<h3>4.8 <code>dto/</code> —— 和前端之间传输的&quot;包裹&quot;</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>装的是啥</th>
+<th>方向</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dto/request/AskRequest.java</code></td>
+<td>前端传来的提问（问题内容 + 会话 ID）</td>
+<td>前端 → 后端</td>
+</tr>
+<tr>
+<td><code>dto/response/AskResponse.java</code></td>
+<td>返回给前端的答案（回答正文 + 来源 + 耗时）</td>
+<td>后端 → 前端</td>
+</tr>
+<tr>
+<td><code>dto/response/DocumentVO.java</code></td>
+<td>文档列表里的一行</td>
+<td>后端 → 前端</td>
+</tr>
+<tr>
+<td><code>dto/response/UploadResult.java</code></td>
+<td>上传结果（文档 ID、状态、字数、页数、文本块数）</td>
+<td>后端 → 前端</td>
+</tr>
+<tr>
+<td><code>dto/response/SourceRef.java</code></td>
+<td><strong>一条引用来源</strong>（文档标题 + 第几页 + 原文片段 + 相似度）。前端那个&quot;来源卡片&quot;就靠它</td>
+<td>后端 → 前端</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><code>VO</code> = View Object（给界面看的对象），<code>DTO</code> = Data Transfer Object（数据传输对象）。名字唬人，本质就是&quot;装数据的盒子&quot;。</p>
+</blockquote>
+<h3>4.9 <code>common/</code> —— 公共工具（全项目通用）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>common/api/ApiResponse.java</code></td>
+<td><strong>统一返回格式</strong>。所有接口都返回 <code>{code, message, data}</code> 这个固定形状，前端好处理</td>
+</tr>
+<tr>
+<td><code>common/api/PageResult.java</code></td>
+<td>统一的分页格式（当前第几页、总共几页、共几条）</td>
+</tr>
+<tr>
+<td><code>common/enums/ErrorCode.java</code></td>
+<td>错误码字典（0=成功，1xxxx=通用错误，2xxxx=文档相关，3xxxx=问答相关）</td>
+</tr>
+<tr>
+<td><code>common/exception/BizException.java</code></td>
+<td>自定义业务异常。业务出错时抛它，比如&quot;文件格式不对&quot;</td>
+</tr>
+<tr>
+<td><code>common/exception/GlobalExceptionHandler.java</code></td>
+<td><strong>全局兜底</strong>。任何地方抛异常，都由它整理成统一格式返回，不会把一堆报错堆栈甩给用户</td>
+</tr>
+<tr>
+<td><code>common/util/CosineSimilarity.java</code></td>
+<td>数学工具：算两个向量的&quot;余弦相似度&quot;（判断两段文字像不像）</td>
+</tr>
+</tbody></table>
+<h3>4.10 <code>config/</code> —— 各种配置（接线的地方）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>config/AiConfig.java</code></td>
+<td>Spring AI 相关配置</td>
+</tr>
+<tr>
+<td><code>config/DeepSeekConfig.java</code></td>
+<td>创建调用 DeepSeek 用的 HTTP 客户端</td>
+</tr>
+<tr>
+<td><code>config/VectorStoreConfig.java</code></td>
+<td><strong>决定用哪种向量存储</strong>：本地开发用普通表，线上用 pgvector（见下方&quot;环境切换&quot;）</td>
+</tr>
+<tr>
+<td><code>config/OpenApiConfig.java</code></td>
+<td>接口文档配置。启动后可访问 <code>http://localhost:8080/api/swagger-ui.html</code> 看到所有接口</td>
+</tr>
+<tr>
+<td><code>config/WebMvcConfig.java</code></td>
+<td>跨域设置、静态资源映射</td>
+</tr>
+<tr>
+<td><code>config/properties/DeepSeekProperties.java</code></td>
+<td>读取 <code>application.yml</code> 里 <code>campus.deepseek.*</code> 的配置（Key、模型名等）</td>
+</tr>
+<tr>
+<td><code>config/properties/QaProperties.java</code></td>
+<td>问答参数：检索取几条（Top-K）、相似度门槛等</td>
+</tr>
+<tr>
+<td><code>config/properties/StorageProperties.java</code></td>
+<td>上传文件的存储目录、大小限制</td>
+</tr>
+</tbody></table>
+<h3>4.11 <code>src/main/resources/</code> —— 配置与数据库脚本</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>application.yml</code></td>
+<td><strong>主配置文件</strong>。端口、数据库连接、AI 参数都在这</td>
+</tr>
+<tr>
+<td><code>application-local.yml</code></td>
+<td><strong>本地开发</strong>专用配置（本机开发用这个）</td>
+</tr>
+<tr>
+<td><code>application-prod.yml</code></td>
+<td>生产环境配置</td>
+</tr>
+<tr>
+<td><code>application-railway.yml</code></td>
+<td>部署到 Railway 平台时的配置（线上用 pgvector 向量库）</td>
+</tr>
+<tr>
+<td><code>prompts/qa-system-prompt.st</code></td>
+<td><strong>给 AI 的&quot;岗位说明书&quot;</strong>。里面写着&quot;必须依据原文回答、不许编造、要标页码&quot;等规则。<strong>想让 AI 回答更严谨/更活泼，改这个文件</strong></td>
+</tr>
+<tr>
+<td><code>db/migration/V1__init_schema.sql</code></td>
+<td>建表脚本：文档表、问答记录表</td>
+</tr>
+<tr>
+<td><code>db/migration/V2__create_t_vector_chunk.sql</code></td>
+<td>建表脚本：本地向量表</td>
+</tr>
+<tr>
+<td><code>db/migration/V3__rename_to_document_chunks.sql</code></td>
+<td>把上面那张表改名为 <code>document_chunks</code></td>
+</tr>
+<tr>
+<td><code>db/migration/V4__allow_null_embedding.sql</code></td>
+<td>允许向量字段为空（配合&quot;没有 Key 也能用&quot;的降级方案）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>V1~V4 是&quot;数据库版本升级包&quot;</strong>（Flyway 工具）。后端每次启动都会自动检查并执行没跑过的脚本，<strong>所以表结构不用你手动建，也别手改这些文件</strong>——要改就新增一个 V5。</p>
+</blockquote>
+<h3>4.12 <code>src/test/</code> —— 单元测试</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>测试什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>test/.../HnkjQaApplicationTests.java</code></td>
+<td>能否成功启动整个应用（默认关闭，因为需要数据库和 Key）</td>
+</tr>
+<tr>
+<td><code>test/.../ai/PdfIngestServiceTest.java</code></td>
+<td>PDF 文字提取是否正常</td>
+</tr>
+<tr>
+<td><code>test/.../ai/vector/JdbcCosineVectorStoreTest.java</code></td>
+<td>向量检索逻辑是否正确</td>
+</tr>
+</tbody></table>
+<h3>4.13 其他后端文件</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>backend/pom.xml</code></td>
+<td><strong>后端的&quot;购物清单&quot;</strong>。声明用到了哪些 Java 库、Java 版本等。加新依赖改这里</td>
+</tr>
+<tr>
+<td><code>backend/Dockerfile</code></td>
+<td>把后包装成 Docker 镜像的说明书（本机 Docker 用不了，暂未使用）</td>
+</tr>
+<tr>
+<td><code>backend/uploads/</code></td>
+<td>你上传的 PDF 实际保存在这里（已被 Git 忽略，不会提交）</td>
+</tr>
+<tr>
+<td><code>backend/target/</code></td>
+<td>编译产物（<code>.class</code> 文件），<strong>自动生成，不要手动改</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="sec-4">五、前端：<code>frontend/</code> 目录</h2>
+<p>前端用的是 <strong>Vue 3</strong>。它的职责是：把界面画出来，响应用户点击，把数据发给后端。<strong>你看到的每一个页面都是前端做的。</strong></p>
+<h3>5.1 前端结构思路</h3>
+<pre><code>index.html（网页外壳）
+    ↓
+main.js（启动，装载各种工具）
+    ↓
+App.vue（根容器，只放一个&quot;路由出口&quot;）
+    ↓
+BasicLayout.vue（整体框架：左边菜单 + 顶栏 + 右边内容区）
+    ↓
+views/xxx/index.vue（各个具体页面）
+    ↓
+components/xxx.vue（页面里复用的小积木）
+</code></pre>
+<h3>5.2 入口三件套</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>index.html</code></td>
+<td>网页的外壳（一个空 <code>&lt;div id=&quot;app&quot;&gt;</code>），Vue 会把整个应用塞进去</td>
+</tr>
+<tr>
+<td><code>src/main.js</code></td>
+<td><strong>前端入口</strong>。创建 Vue 应用、注册路由/状态管理/Element Plus 组件库</td>
+</tr>
+<tr>
+<td><code>src/App.vue</code></td>
+<td>根组件，只有一个 <code>&lt;router-view /&gt;</code>（&quot;这里显示当前页面&quot;）</td>
+</tr>
+</tbody></table>
+<h3>5.3 路由与布局</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/router/index.js</code></td>
+<td><strong>路由表</strong>：哪个网址显示哪个页面。四页：<code>/home</code>、<code>/qa</code>、<code>/document</code>、<code>/upload</code>。<strong>加新页面先改这里</strong></td>
+</tr>
+<tr>
+<td><code>src/layouts/BasicLayout.vue</code></td>
+<td><strong>页面骨架</strong>：左侧导航菜单 + 顶部标题栏 + 右侧内容区（内容区最大 1200px 居中）</td>
+</tr>
+</tbody></table>
+<h3>5.4 <code>views/</code> —— 四个页面（最常改的地方）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>页面</th>
+<th>干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>views/home/index.vue</code></td>
+<td>首页</td>
+<td>欢迎页，两个功能入口卡片 + 示例问题</td>
+</tr>
+<tr>
+<td><code>views/qa/index.vue</code></td>
+<td>智能问答</td>
+<td><strong>主战场</strong>。消息气泡、正在思考动画、Markdown 渲染、回车发送、来源卡片</td>
+</tr>
+<tr>
+<td><code>views/document/index.vue</code></td>
+<td>规章制度库</td>
+<td>表格列出所有文档，可搜索、删除、重建索引</td>
+</tr>
+<tr>
+<td><code>views/upload/index.vue</code></td>
+<td>上传规章制度</td>
+<td>拖拽上传 PDF，显示进度，成功后显示文件名和字数</td>
+</tr>
+<tr>
+<td><code>views/error/404.vue</code></td>
+<td>404</td>
+<td>网址输错时显示的页面</td>
+</tr>
+</tbody></table>
+<h3>5.5 <code>components/</code> —— 可复用的小积木</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>components/PageHeader.vue</code></td>
+<td>页面顶部标题条（标题 + 小字说明 + 右侧按钮），好几个页面都在用</td>
+</tr>
+<tr>
+<td><code>components/MarkdownText.vue</code></td>
+<td><strong>把 AI 回答渲染成漂亮格式</strong>（列表、加粗、表格）。还负责把 <code>[第2页]</code> 变成蓝色小标签</td>
+</tr>
+<tr>
+<td><code>components/SourceCitation.vue</code></td>
+<td><strong>来源引用卡片</strong>。显示&quot;这段答案来自哪份文件第几页&quot;，点一下能展开看原文</td>
+</tr>
+</tbody></table>
+<h3>5.6 <code>api/</code> —— 和后端说话的三种方式</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>api/request.js</code></td>
+<td><strong>公共请求工具</strong>（axios）。统一设置后端地址、超时、错误提示</td>
+</tr>
+<tr>
+<td><code>api/document.js</code></td>
+<td>文档相关的请求：上传、列表、详情、删除、重建索引</td>
+</tr>
+<tr>
+<td><code>api/chat.js</code></td>
+<td>问答相关的请求。<strong>流式问答的核心逻辑在这</strong>（一段一段接收 AI 的回答）</td>
+</tr>
+</tbody></table>
+<h3>5.7 <code>stores/</code> —— 共享状态（Pinia）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>stores/chat.js</code></td>
+<td><strong>存放聊天记录的地方</strong>。你发的消息、AI 的回答、来源，都存在这里，页面切换不会丢</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>小白理解</strong>：<code>store</code> 就像一个&quot;公共抽屉&quot;，多个页面都能从里面拿、往里面放数据。</p>
+</blockquote>
+<h3>5.8 <code>styles/</code> —— 全局样式（想换配色改这里）</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>styles/variables.scss</code></td>
+<td><strong>调色板 + 尺寸表</strong>。主色（学术蓝 <code>#2563eb</code>）、灰阶、圆角、阴影、字体、页面宽度都在这定义。<strong>改配色只改这个文件就够了</strong></td>
+</tr>
+<tr>
+<td><code>styles/index.scss</code></td>
+<td>全局样式：字体、重置、通用卡片样式、Markdown 排版、滚动条、动画</td>
+</tr>
+</tbody></table>
+<h3>5.9 <code>utils/</code></h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>utils/format.js</code></td>
+<td>小工具函数：字节转 KB/MB、时间格式化、生成会话 ID</td>
+</tr>
+</tbody></table>
+<h3>5.10 前端配置文件</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>package.json</code></td>
+<td><strong>前端的&quot;购物清单&quot;</strong>。声明依赖库和命令（<code>npm run dev</code> 启动、<code>npm run build</code> 打包）</td>
+</tr>
+<tr>
+<td><code>vite.config.js</code></td>
+<td>Vite 构建工具配置。<strong>含关键的代理设置</strong>：把 <code>/api</code> 请求转发到 <code>localhost:8080</code>（解决跨域）</td>
+</tr>
+<tr>
+<td><code>jsconfig.json</code></td>
+<td>让编辑器认识 <code>@/</code> 代表 <code>src/</code> 目录（写代码时路径短一点）</td>
+</tr>
+<tr>
+<td><code>.env.development</code></td>
+<td>开发环境变量（后端地址等）</td>
+</tr>
+<tr>
+<td><code>.env.production</code></td>
+<td>生产环境变量</td>
+</tr>
+<tr>
+<td><code>nginx.conf</code></td>
+<td>线上用 Nginx 部署时：托管静态页面 + 把 <code>/api</code> 转发给后端</td>
+</tr>
+<tr>
+<td><code>Dockerfile</code> / <code>.dockerignore</code></td>
+<td>打包成 Docker 镜像的说明书</td>
+</tr>
+<tr>
+<td><code>src/assets/</code></td>
+<td>放图片、字体等静态素材（目前是空的占位目录）</td>
+</tr>
+<tr>
+<td><code>node_modules/</code></td>
+<td>下载下来的第三方库（几百 MB，<strong>不要动、不要提交</strong>）</td>
+</tr>
+<tr>
+<td><code>dist/</code></td>
+<td>打包产物（<code>npm run build</code> 生成，<strong>不要动、不要提交</strong>）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="sec-5">六、<code>docs/</code> 与根目录其他文件</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>它是干啥的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docs/architecture.md</code></td>
+<td>项目架构设计说明（技术选型、模块划分）</td>
+</tr>
+<tr>
+<td><code>docs/local-db-setup.md</code></td>
+<td><strong>本地数据库安装教程</strong>（PostgreSQL 怎么装、库怎么建）</td>
+</tr>
+<tr>
+<td><code>docs/initdb/01-init-vector.sql</code></td>
+<td>数据库容器首次创建时自动执行的脚本（启用向量扩展）</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>项目门面：介绍、技术栈、启动步骤。<strong>GitHub 上首先看到它</strong></td>
+</tr>
+<tr>
+<td><code>docker-compose.yml</code></td>
+<td>一条命令同时启动&quot;数据库 + 后端 + 前端&quot;三个容器（本机 Docker 装不了，留着备用）</td>
+</tr>
+<tr>
+<td><code>run-backend.ps1</code></td>
+<td>一键启动后端的 PowerShell 脚本（会自动处理端口和 API Key）</td>
+</tr>
+<tr>
+<td><code>.gitignore</code></td>
+<td><strong>哪些文件不上传到 GitHub</strong>（日志、临时文件、密钥、node_modules 等）</td>
+</tr>
+<tr>
+<td><code>.workbuddy/</code></td>
+<td>AI 助手的工作记录（项目记忆），与程序运行无关</td>
+</tr>
+<tr>
+<td><code>.idea/</code></td>
+<td>IntelliJ IDEA 编辑器的个人设置，不提交</td>
+</tr>
+<tr>
+<td><code>backend-run.log</code> / <code>frontend-run.log</code> / <code>compile.log</code></td>
+<td>运行日志。<strong>程序报错时，先来这里搜 <code>ERROR</code></strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="sec-6">七、小白最关心的几个问题</h2>
+<p><strong>Q1：我要改界面文案/颜色，去哪改？</strong>
+颜色 → <code>frontend/src/styles/variables.scss</code>；页面文字 → 对应的 <code>frontend/src/views/xxx/index.vue</code>。</p>
+<p><strong>Q2：我要加一个新页面，怎么做？</strong>
+三步：① 在 <code>frontend/src/views/</code> 下新建一个文件夹和 <code>index.vue</code>；② 在 <code>frontend/src/router/index.js</code> 里加一条路由；③ 在 <code>frontend/src/layouts/BasicLayout.vue</code> 的菜单数组里加一项。</p>
+<p><strong>Q3：AI 回答得不好/爱瞎编，改哪里？</strong>
+先改 <code>backend/src/main/resources/prompts/qa-system-prompt.st</code>（给 AI 立的规矩）；如果效果还不理想，再看 <code>backend/src/main/java/com/hnkj/qa/ai/RagQaService.java</code>（检索参数）。</p>
+<p><strong>Q4：上传 PDF 后问答搜不到内容，怎么查？</strong>
+① 看 <code>backend-run.log</code> 里搜 <code>ERROR</code>；② 到「规章制度库」页面点&quot;重建索引&quot;；③ 检查环境变量里 Embedding 的 Key 是否配置正确。</p>
+<p><strong>Q5：哪些文件千万不要手改？</strong>
+<code>target/</code>、<code>node_modules/</code>、<code>dist/</code>、日志文件——这些都是自动生成的。另外已经执行过的数据库脚本 <code>V1~V4</code> 也不要改，要改就新增 <code>V5</code>。</p>
+<p><strong>Q6：<code>local</code> 和 <code>railway</code> 是什么意思？</strong>
+这是两套&quot;运行环境&quot;。<strong>local</strong> = 你本机开发，用普通表 + Java 算相似度（因为本机装不了 pgvector 插件）；<strong>railway</strong> = 部署到线上，用专业向量数据库。切换靠一个环境变量 <code>SPRING_PROFILES_ACTIVE</code>，代码不用动。</p>
+<hr>
+<h2 id="sec-7">八、名词速查表</h2>
+<table>
+<thead>
+<tr>
+<th>名词</th>
+<th>大白话解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PDF Box</strong></td>
+<td>一个 Java 库，专门用来读 PDF 里的文字</td>
+</tr>
+<tr>
+<td><strong>切分 / 文本块</strong></td>
+<td>把一整篇文档切成若干小段，方便精确查找（就像把一本书拆成卡片）</td>
+</tr>
+<tr>
+<td><strong>向量 / Embedding</strong></td>
+<td>把一段文字换算成一串数字。意思相近的文字，数字也相近</td>
+</tr>
+<tr>
+<td><strong>余弦相似度</strong></td>
+<td>衡量两串数字&quot;像不像&quot;的数学方法，越接近 1 越像</td>
+</tr>
+<tr>
+<td><strong>RAG</strong></td>
+<td>先查资料、再让 AI 照着资料回答的套路。本项目核心方法</td>
+</tr>
+<tr>
+<td><strong>Top-K</strong></td>
+<td>&quot;取最像的前 K 条&quot;，本项目默认取 3 条</td>
+</tr>
+<tr>
+<td><strong>相似度阈值</strong></td>
+<td>像的程度低于这个数就不要了，避免拿不相关的材料误导 AI</td>
+</tr>
+<tr>
+<td><strong>SSE / 流式</strong></td>
+<td>服务器像打字机一样一个字一个字往外送，不用等全部写完</td>
+</tr>
+<tr>
+<td><strong>会话 ID / sessionId</strong></td>
+<td>给每次聊天打一个编号，用来串起上下文</td>
+</tr>
+<tr>
+<td><strong>Flyway</strong></td>
+<td>数据库版本管理工具，用 V1/V2/V3 这样的脚本按顺序升级表结构</td>
+</tr>
+<tr>
+<td><strong>profile</strong></td>
+<td>Spring Boot 的&quot;环境档案&quot;，一套配置对应一种运行环境</td>
+</tr>
+<tr>
+<td><strong>Lombok</strong></td>
+<td>Java 插件，用注解自动生成 getter/setter，少写很多重复代码</td>
+</tr>
+<tr>
+<td><strong>Element Plus</strong></td>
+<td>Vue 的界面组件库（按钮、表格、弹窗都是现成的）</td>
+</tr>
+<tr>
+<td><strong>Pinia</strong></td>
+<td>Vue 的状态管理库，用来在多页面间共享数据</td>
+</tr>
+<tr>
+<td><strong>Vite</strong></td>
+<td>前端的开发服务器和打包工具，改代码后浏览器秒刷新</td>
+</tr>
+<tr>
+<td><strong>Nginx</strong></td>
+<td>线上的网页服务器，负责发网页 + 转发接口请求</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="sec-8">九、建议的上手路线</h2>
+<p>如果你要开始动手改这个项目，按这个顺序最不容易迷路：</p>
+<ol>
+<li><strong>先跑起来</strong> → 把三个服务启动，浏览器里点一遍四个页面，建立直观印象。</li>
+<li><strong>从页面入手</strong> → 打开 <code>frontend/src/views/</code> 下的文件，改改文字、颜色，看浏览器里的变化（Vite 会热更新，不用重启）。</li>
+<li><strong>理解数据怎么走</strong> → 看 <code>frontend/src/api/chat.js</code>（前端怎么发请求）→ 再看 <code>backend/.../controller/QaController.java</code>（后端怎么接）→ 顺着看 <code>QaServiceImpl.java</code>（怎么处理）。</li>
+<li><strong>最后碰 AI 部分</strong> → 等前面都清楚了，再研究 <code>backend/src/main/java/com/hnkj/qa/ai/</code> 这个文件夹。</li>
+<li><strong>遇到报错</strong> → 先看 <code>backend-run.log</code> / 浏览器按 <code>F12</code> 看 Console，90% 的问题一眼就能定位。</li>
+</ol>
+<hr>
+<p><em>本文档由项目结构自动梳理生成。如果你新增了文件，记得回来补上一行说明。</em></p>
+
+  </main>
+</div>
+
+<a class="top" href="#" title="回到顶部">↑</a>
+
+</body>
+</html>
