@@ -1,8 +1,79 @@
-# 湖南科技职业学院 · 校园问答系统
+# 湖南科技职业学院 · 校园规章制度智能问答系统
 
-基于学校规章制度 PDF 的智能问答平台。学生用自然语言提问，系统检索 PDF 内容并由大模型生成回答，**每条回答标注来源文档与页码**。
+> **一句话介绍**：把学校的规章制度 PDF 变成「会回答问题」的知识库——学生用自然语言提问，系统做**语义检索**命中最相关的制度原文，由 DeepSeek 生成回答，**每条回答都标注来源文档与页码**，从根源上抑制大模型幻觉。
+>
+> **应用场景**：学生问「考试作弊会受什么处分」「转专业要满足什么条件」，再也不用翻几十页 PDF 找条文；管理员只需上传文档，系统自动完成解析、切分、向量化全流程。
 
-> 当前仓库为**项目骨架**，仅包含目录结构、基础配置与空实现类，业务逻辑待后续填充。
+**痛点 → 方案：**
+
+| 传统方式 | 本系统 |
+| --- | --- |
+| 规章制度散落在几十个 PDF 里，人工翻找 | 上传即入库，自然语言直接问 |
+| 大模型直接回答校规问题 → 容易编造（幻觉） | RAG 架构：**先检索原文，再依据原文回答**，无依据时明确说「制度中未涉及」 |
+| 关键词搜索搜不到「换了说法」的问题 | 1024 维向量语义检索，同义改写也能命中 |
+| 回答不可信、无从核对 | 每条回答附**来源文档 + 页码 + 原文片段**，可点击展开核对 |
+
+---
+
+## ⚡ 10 分钟极速复现指南
+
+### 前置条件（2 分钟）
+
+| 依赖 | 版本 | 用途 |
+| --- | --- | --- |
+| JDK | 17+ | 后端运行 |
+| Maven | 3.8+ | 后端构建 |
+| Node.js | 18+ | 前端构建 |
+| PostgreSQL | 14+ | 业务数据 + 向量存储（**无需 pgvector 扩展**） |
+
+### 第 1 步：启动数据库（1 分钟）
+
+```bash
+# 方式 A：有 Docker
+docker compose up -d
+
+# 方式 B：本机已装 PostgreSQL，直接建库
+psql -U postgres -c "CREATE DATABASE campus_qa;"
+```
+
+### 第 2 步：申请两个 Key（3 分钟）
+
+| Key | 用途 | 申请地址 |
+| --- | --- | --- |
+| `DEEPSEEK_API_KEY` | 生成回答 | https://platform.deepseek.com |
+| `OPENAI_API_KEY` | 文本向量化（Embedding） | https://cloud.siliconflow.cn （实名认证后创建，`BAAI/bge-m3` 模型免费） |
+
+> 为什么需要两个 Key？DeepSeek 官方**不提供 Embedding 接口**，所以生成与向量化分离——这也是本项目「检索/生成解耦」架构的体现。
+
+### 第 3 步：配置环境变量（1 分钟）
+
+```bash
+# 参考模板：backend/.env.example（复制后填入你的 Key）
+# Windows PowerShell 示例：
+$env:DEEPSEEK_API_KEY  = "sk-你的DeepSeek密钥"
+$env:OPENAI_API_KEY    = "sk-你的硅基流动密钥"
+$env:OPENAI_BASE_URL   = "https://api.siliconflow.cn"   # 注意：不要带 /v1
+$env:AI_EMBEDDING_MODEL = "BAAI/bge-m3"
+```
+
+### 第 4 步：启动前后端（2 分钟）
+
+```bash
+# 后端（首次会自动下载依赖，Flyway 自动建表）
+cd backend && mvn spring-boot:run
+
+# 新开一个终端，前端
+cd frontend && npm install && npm run dev
+```
+
+打开 http://localhost:5173 → **上传规章制度** 页传一份 PDF → 切到**智能问答**提问。
+
+### ✅ 复现验收标准
+
+1. 上传 PDF 后返回「提取字数 / 页数 / 文本块数」统计
+2. 提问后 **2~3 秒**内开始流式输出（SSE），回答为 Markdown 格式
+3. 回答下方出现 3 条**可展开的来源卡片**，含页码标签与相似度
+4. 问一个制度里没有的问题（如「今天天气如何」），系统回答「制度中未涉及」而非编造
 
 ---
 
@@ -13,190 +84,177 @@
 | --- | --- | --- |
 | Vue | 3.5.x | 组合式 API + `<script setup>` |
 | Vite | 6.x | 构建工具 |
-| Vue Router | 4.x | 路由 |
-| Pinia | 2.x | 状态管理 |
+| Vue Router / Pinia | 4.x / 2.x | 路由 / 状态管理 |
 | Element Plus | 2.8.x | UI 组件库 |
-| Axios | 1.x | HTTP 请求 |
-| Sass | 1.x | 样式预处理 |
+| marked + DOMPurify | - | Markdown 渲染 + 防 XSS |
+| Sass | 1.x | 样式预处理（设计令牌系统） |
 
 ### 后端
 | 组件 | 版本 | 说明 |
 | --- | --- | --- |
 | Java | 17 | LTS |
 | Spring Boot | 3.4.1 | 基础框架 |
-| Spring AI | 1.0.0 | LLM 调用 / Embedding / RAG |
-| Spring Data JPA | - | 数据访问 |
-| Flyway | - | 数据库版本管理 |
-| PostgreSQL | 16 + pgvector | 业务数据 + 向量存储 |
-| Apache PDFBox | 3.x | PDF 解析兜底 |
-| springdoc-openapi | 2.7.x | 接口文档 |
+| Spring AI | 1.0.0 | Embedding / RAG 抽象层 |
+| Spring Data JPA + Flyway | - | 数据访问 / 数据库版本管理 |
+| PostgreSQL | 14+ | 业务数据 + 向量存储 |
+| Apache PDFBox | 3.x | PDF 解析 |
+| springdoc-openapi | 2.7.x | 接口文档（/api/swagger-ui.html） |
+
+### 大模型
+| 用途 | 供应商 | 模型 | 说明 |
+| --- | --- | --- | --- |
+| 生成回答 | DeepSeek | `deepseek-flash` | 思维链可配置开关，流式 SSE 输出 |
+| 文本向量化 | 硅基流动 | `BAAI/bge-m3`（1024 维） | 免费模型，任何 OpenAI 协议兼容服务均可替换 |
 
 ---
 
-## 二、目录结构
+## 二、系统架构
+
+```
+┌─────────── 前端 Vue3 ───────────┐
+│  上传页 │ 问答页(SSE流式) │ 文档管理 │
+└───────┬────────────┬───────────┘
+        │ POST /api/upload        │ POST /api/qa/ask/stream (SSE)
+┌───────▼─────────────────────────▼───────┐
+│                 后端 Spring Boot          │
+│  PdfIngestService      RagQaService       │
+│  ┌─────────┐  ┌──────────┐  ┌─────────┐  │
+│  │PDF 解析 │→│ 切分+向量化│→│ 语义检索 │  │
+│  └─────────┘  └────┬─────┘  └────┬────┘  │
+│                    │       ┌─────▼─────┐ │
+│                    │       │DeepSeek   │ │
+│                    │       │生成回答   │ │
+│  JdbcCosineVectorStore │  └───────────┘ │
+│  (普通表+Java余弦) / pgvector 双模式      │
+└────────────┬────────────────────────────┘
+             │
+      ┌──────▼──────┐
+      │ PostgreSQL  │ ← Flyway 自动建表(V1~V4)
+      └─────────────┘
+```
+
+**核心流程（一次问答的生命周期）：**
+
+1. **入库**：PDF → PDFBox 提取文本 → 按 token 切分 → 每块调 bge-m3 生成 1024 维向量 → 存入 `document_chunks`（向量 + 页码 + 标题元数据）
+2. **检索**：用户提问 → 问题向量化 → 与库内全量向量算余弦相似度 → 取 Top-3（相似度 ≥ 0.6）
+3. **生成**：命中文本块 + 页码注入系统提示词 → DeepSeek 依据**原文**回答并标注 `[第X页]`
+4. **兜底**：Embedding 服务不可用时自动降级为中文 2-gram 关键词匹配（服务不中断）；生成失败时推送制度原文摘录
+
+## 三、目录结构
 
 ```
 hnjgAichat/
-├── README.md                       # 本文件
-├── .gitignore
-├── docker-compose.yml              # PostgreSQL(pgvector) 本地环境
+├── README.md                       # 本文件（10分钟复现指南）
+├── PROJECT-GUIDE.md                # 新手向逐文件说明书
+├── docker-compose.yml              # PostgreSQL 本地环境
 ├── docs/
-│   └── architecture.md             # 架构与数据流说明
+│   ├── architecture.md             # 架构与数据流
+│   ├── TECH-DOC.md                 # 技术文档（意图控制/架构/可复现性）
+│   ├── prompt-history/             # AI 协同演进记录（Prompt 链快照）
+│   └── local-db-setup.md           # 本机免 Docker 建库指南
 ├── backend/                        # Java 17 + Spring Boot 3
-│   ├── pom.xml
-│   └── src/
-│       ├── main/
-│       │   ├── java/com/hnkj/qa/
-│       │   │   ├── HnkjQaApplication.java      # 启动类
-│       │   │   ├── common/                     # 通用能力
-│       │   │   │   ├── api/                    # 统一响应体、分页
-│       │   │   │   ├── enums/                  # 错误码枚举
-│       │   │   │   └── exception/              # 业务异常 + 全局异常处理
-│       │   │   ├── config/                     # 配置类
-│       │   │   │   ├── WebMvcConfig.java       # 跨域 / 静态资源
-│       │   │   │   ├── AiConfig.java           # ChatClient Bean
-│       │   │   │   └── OpenApiConfig.java      # 接口文档
-│       │   │   ├── controller/                 # 接口层
-│       │   │   ├── service/                    # 业务接口
-│       │   │   │   └── impl/                   # 业务实现
-│       │   │   ├── repository/                 # 数据访问层
-│       │   │   ├── entity/                     # 数据库实体
-│       │   │   ├── dto/                        # 请求/响应对象
-│       │   │   │   ├── request/
-│       │   │   │   └── response/
-│       │   │   └── ai/                         # RAG 相关（解析/切分/检索/生成）
-│       │   └── resources/
-│       │       ├── application.yml             # 主配置
-│       │       ├── application-dev.yml         # 开发环境
-│       │       ├── application-prod.yml        # 生产环境
-│       │       ├── db/migration/               # Flyway 脚本
-│       │       └── prompts/                    # 提示词模板
-│       └── test/java/com/hnkj/qa/
-└── frontend/                       # Vue 3 + Vite + Element Plus
-    ├── package.json
-    ├── vite.config.js
-    ├── index.html
-    ├── jsconfig.json
-    ├── .env.development / .env.production
+│   ├── .env.example                # 环境变量模板 ← 复制这个
+│   └── src/main/java/com/hnkj/qa/
+│       ├── ai/                     # RAG 核心
+│       │   ├── vector/             #   JdbcCosineVectorStore（含 Embedding 熔断器）
+│       │   ├── deepseek/           #   DeepSeek 客户端（同步/流式）
+│       │   ├── embedding/          #   EmbeddingService 封装
+│       │   └── RagQaService.java   #   检索→上下文→生成→来源引用
+│       ├── controller/             # 上传/文档/问答 接口层
+│       ├── service/                # 业务实现
+│       ├── repository/ entity/ dto/
+│       └── config/                 # 向量存储装配、跨域等
+└── frontend/                       # Vue 3 + Vite
     └── src/
-        ├── main.js
-        ├── App.vue
-        ├── api/                    # 接口封装
-        ├── assets/                 # 静态资源
-        ├── components/             # 通用组件
-        ├── layouts/                # 布局
-        ├── router/                 # 路由
-        ├── stores/                 # Pinia
-        ├── styles/                 # 全局样式
-        ├── utils/                  # 工具函数
-        └── views/                  # 页面
+        ├── components/             # MarkdownText(渲染) / SourceCitation(可展开引用)
+        ├── views/                  # upload / qa / document / home
+        ├── stores/chat.js          # 流式消息状态机
+        └── styles/                 # 设计令牌 variables.scss
 ```
-
----
-
-## 三、快速开始
-
-### 1. 启动数据库
-
-```bash
-docker compose up -d
-```
-
-默认连接信息：`localhost:5432`，库 `campus_qa`，账号 `postgres` / `postgres`。
-
-> **本机没有 Docker？** 可原生安装 PostgreSQL 16 + pgvector，无需容器：
-> 参见 **[docs/local-db-setup.md](docs/local-db-setup.md)**。
-
-### 2. 启动后端
-
-```bash
-cd backend
-# 配置大模型 API Key（不配置则使用默认占位值，仅可启动无法真实调用）
-export OPENAI_API_KEY=sk-xxxxxx
-export OPENAI_BASE_URL=https://api.openai.com
-mvn spring-boot:run
-```
-
-- 服务地址：http://localhost:8080/api
-- 接口文档：http://localhost:8080/api/swagger-ui.html
-
-### 3. 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-- 访问地址：http://localhost:5173
-
-### 4. 一键全栈（Docker）
-
-若想把数据库、后端、前端一起用容器跑起来：
-
-```bash
-# 项目根目录
-docker compose up -d --build
-```
-
-| 入口 | 地址 |
-| --- | --- |
-| 前端 | http://localhost |
-| 后端接口文档 | http://localhost/api/swagger-ui.html |
-| 数据库 | `localhost:5432`（外部工具可直连） |
-
-大模型 Key 可通过项目根目录 `.env` 文件或环境变量 `OPENAI_API_KEY` 传入。
-
----
 
 ## 四、环境变量
 
+完整清单见 **[backend/.env.example](backend/.env.example)**，核心项：
+
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `SPRING_PROFILES_ACTIVE` | 运行模式：`local`（普通表+余弦检索）/ `railway`（pgvector） | `local` |
-| `OPENAI_API_KEY` | 大模型 API Key | `demo-key` |
-| `OPENAI_BASE_URL` | 接口地址（兼容 OpenAI 协议均可） | `https://api.openai.com` |
-| `DB_HOST` / `DB_PORT` | 数据库地址 | `localhost` / `5432` |
-| `DB_NAME` | 数据库名 | `campus_qa` |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` | 数据库连接 | `localhost:5432/campus_qa` |
 | `DB_USERNAME` / `DB_PASSWORD` | 数据库账号 | `postgres` / `postgres` |
-| `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` | Railway Postgres 插件自动注入的变量（railway profile 优先使用） | - |
+| `DEEPSEEK_API_KEY` | **必填**，生成回答 | — |
+| `DEEPSEEK_MODEL` | 生成模型 | `deepseek-flash` |
+| `OPENAI_API_KEY` | **必填**，Embedding | — |
+| `OPENAI_BASE_URL` | Embedding 服务地址（**不带 /v1**） | `https://api.siliconflow.cn` |
+| `AI_EMBEDDING_MODEL` | 嵌入模型 | `BAAI/bge-m3` |
+| `SPRING_PROFILES_ACTIVE` | `local`（免 pgvector）/ `railway`（pgvector） | `local` |
+
+## 五、核心设计
+
+### 1. 向量存储双模式（免 pgvector 也能跑）
+| | `local`（默认） | `railway` |
+| --- | --- | --- |
+| 向量存储 | 普通表 `document_chunks`，向量存 JSONB | pgvector `vector_store`（HNSW） |
+| 相似度计算 | Java 侧余弦相似度 Top-K | 数据库内计算 |
+| 依赖 | **纯 PostgreSQL，无需任何扩展** | 需 pgvector 扩展 |
+| 适用 | 本地开发 / 一般规模 | 云部署 / 大规模 |
+
+两者实现同一 `VectorStore` 接口，业务代码零改动切换。
+
+### 2. 三层防幻觉
+- **相关性闸门**：检索命中相似度全部低于阈值时，不调用大模型，直接告知「制度中未涉及」
+- **来源强制标注**：提示词要求回答必须标注 `[第X页]` 且禁止估算页码，前端渲染为可核对来源卡
+- **降级链路**：Embedding 失败 → 关键词匹配兜底；生成失败 → 推送制度原文摘录。全程服务可用
+
+### 3. 健壮性设计
+- **Embedding 熔断器**：Embedding 服务连续失败立即熔断 10 分钟，避免每次提问都等待网络超时（曾把响应从 44s 优化回 2s）
+- **SSE 流式问答**：`sources → message* → done` 事件协议，前端 `fetch + ReadableStream` 消费，首字延迟 < 2s
+- **数据库版本管理**：Flyway V1~V4 迁移脚本，clone 后启动即自动建表
+
+## 六、API 一览
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/upload` | 上传 PDF（multipart `file`），返回统计与 documentId |
+| GET | `/api/documents/page` | 文档分页列表 |
+| GET | `/api/documents/{id}` | 文档详情 |
+| DELETE | `/api/documents/{id}` | 删除文档及其向量 |
+| POST | `/api/documents/{id}/reindex` | 重建索引（重新切分+向量化） |
+| POST | `/api/qa/ask` | 同步问答 |
+| POST | `/api/qa/ask/stream` | **SSE 流式问答** |
+| GET | `/api/qa/history?sessionId=` | 会话历史 |
+
+交互式文档：启动后端后访问 http://localhost:8080/api/swagger-ui.html
+
+## 七、常见问题（FAQ）
+
+<details>
+<summary><b>Embedding 调用报 404？</b></summary>
+
+`OPENAI_BASE_URL` 不要带 `/v1`。Spring AI 会自动拼接 `/v1/embeddings`，写成 `https://api.siliconflow.cn/v1` 会请求到 `/v1/v1/embeddings` 导致 404。
+</details>
+
+<details>
+<summary><b>硅基流动 Key 报 401 Token is invalid？</b></summary>
+
+未实名认证的账号签发的 Key 服务端不认。完成实名认证后**重新创建** Key 即可。
+</details>
+
+<details>
+<summary><b>本机装不了 pgvector？</b></summary>
+
+无需安装。默认 `local` profile 用普通表 + Java 余弦计算，任何 PostgreSQL 都能跑。
+</details>
+
+<details>
+<summary><b>回答等待很久才开始输出？</b></summary>
+
+检查 Embedding Key 是否有效。Key 无效时系统自动降级为关键词检索（可用但稍慢）；配置有效 Key 并点「重建索引」即恢复语义检索。
+</details>
 
 ---
 
-## 五、向量存储：双模式（本机免 pgvector）
+## 附：项目文档
 
-本机 Windows 装不上 pgvector 扩展也没关系，系统内置两套向量存储，按 profile 一键切换，**业务代码完全一致**：
-
-| | `local`（默认） | `railway` |
-| --- | --- | --- |
-| 向量存储 | 普通表 `t_vector_chunk`（embedding 以 JSONB 数组保存） | pgvector `vector_store` 表（HNSW 索引） |
-| 相似度计算 | Java 侧余弦相似度，取 Top-K | pgvector 数据库内计算 |
-| 是否需要 pgvector 扩展 | **不需要**（纯普通 PostgreSQL） | 需要（`CREATE EXTENSION vector;`） |
-| 适用场景 | 本地开发、Docker、任何 PG | Railway / 生产部署 |
-
-- 切换方式：`SPRING_PROFILES_ACTIVE=railway`（默认 `local`）
-- 上传的 PDF 自动切分（`TokenTextSplitter`）→ 向量化（`text-embedding-3-small`）→ 入库，每个文本块带 `documentId` / `page_number` / `title` 元数据
-- 性能边界：local 模式全量加载 + 内存余弦计算，适合数百~数千文本块；数据量大了切 railway 模式
-- Railway 部署注意：Railway 默认 Postgres 模板**不含** pgvector，需用带 pgvector 的镜像自建数据库服务
-
-## 六、当前进度与核心业务流程
-
-### 已实现
-
-- **PDF 上传接口**：`POST /api/upload`（字段名 `file`，multipart/form-data）
-  - 保存到 `backend/uploads/` 目录（带时间戳前缀防重名）
-  - 用 Apache PDFBox 提取全文并打印到控制台
-  - 文档元信息落库 `t_document`；随后**自动切分 + 向量化入库**（local: `t_vector_chunk` / railway: pgvector）
-  - 向量化失败不阻断上传：状态降级为 `FAILED`，可稍后调 `POST /api/documents/{id}/reindex` 重试
-  - 返回：`{ code, message, data: { fileName, storedName, textLength, pageCount, documentId, status, chunkCount } }`
-  - 测试：`curl -F "file=@某规章制度.pdf" http://localhost:8080/api/upload`
-- **向量存储双模式**：`JdbcCosineVectorStore`（普通表 + Java 余弦 Top-3）与 pgvector 按 profile 切换
-- 提取与向量库均有单元测试覆盖：`PdfIngestServiceTest`、`JdbcCosineVectorStoreTest`（6 用例全绿）
-
-### 待实现（业务路线）
-
-1. **检索问答**：`RagQaService.answer` 补全——Top-K 检索 → 组装上下文 → 生成回答 + 引用页码（存储层已就绪，直接调 `vectorStore.similaritySearch`）。
-2. **文档管理**：`page / detail / delete / reindex` 接口补全，前端列表展示真实数据。
-3. 问答记录落库 `t_chat_record`、流式输出。
-
-详见 `docs/architecture.md`。
+- [PROJECT-GUIDE.md](PROJECT-GUIDE.md) —— 新手向逐文件说明书（每个文件是干啥的）
+- [docs/TECH-DOC.md](docs/TECH-DOC.md) —— 技术文档：意图控制策略 / 架构设计 / 可复现性论证
+- [docs/prompt-history/](docs/prompt-history/) —— AI 协同演进记录（核心迭代的 Prompt 链快照）
+- [docs/architecture.md](docs/architecture.md) —— 架构与数据流
