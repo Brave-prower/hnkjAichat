@@ -89,27 +89,29 @@ function go(path) {
 
 <style scoped lang="scss">
 .home-page {
-  max-width: 1100px;
+  max-width: var(--app-container);
   margin: 0 auto;
 }
 
 .hero {
-  padding: 36px 28px;
-  border-radius: var(--app-radius);
-  background: linear-gradient(135deg, #1f6feb 0%, #4c8dff 100%);
+  padding: 40px 32px;
+  border-radius: var(--app-radius-lg);
+  background: linear-gradient(135deg, #2563eb 0%, #4c8dff 100%);
+  box-shadow: var(--app-shadow-primary);
   color: #ffffff;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 
   &__title {
     margin: 0;
-    font-size: 24px;
+    font-size: 25px;
     font-weight: 700;
+    letter-spacing: 0.5px;
   }
 
   &__subtitle {
-    margin: 10px 0 20px;
+    margin: 10px 0 22px;
     font-size: 14px;
-    opacity: 0.9;
+    opacity: 0.92;
   }
 
   &__actions {

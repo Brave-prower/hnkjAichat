@@ -1,20 +1,58 @@
-// 全局设计变量（可在组件中通过 var(--xxx) 使用）
+// ============================================================
+// 全局设计变量（学术风 · 蓝白灰）
+// 所有组件通过 var(--xxx) 引用，改这里即可全局换肤。
+// ============================================================
 :root {
-  --app-primary: #1f6feb;
-  --app-primary-light: #e8f1ff;
-  --app-success: #17a673;
-  --app-warning: #e6a23c;
+  /* ---------- 主色（学术蓝） ---------- */
+  --app-primary: #2563eb;
+  --app-primary-hover: #1d4ed8;
+  --app-primary-active: #1e40af;
+  --app-primary-soft: #eef4ff; // 浅蓝底：AI 气泡 / 高亮
+  --app-primary-border: #c9daf9; // 浅蓝描边
+  --app-primary-ring: rgba(37, 99, 235, 0.16); // 聚焦光圈
+
+  /* ---------- 语义色 ---------- */
+  --app-success: #0f9d58;
+  --app-success-soft: #eafaf1;
+  --app-warning: #d98916;
+  --app-warning-soft: #fdf5e6;
   --app-danger: #d64545;
+  --app-danger-soft: #fdeeee;
 
-  --app-bg: #f5f7fa;
+  /* ---------- 中性色（白 / 灰阶） ---------- */
+  --app-bg: #f6f8fb; // 页面底色
+  --app-bg-subtle: #fafbfd; // 次级底（输入区 / 引用区）
   --app-card-bg: #ffffff;
-  --app-border: #e4e7ed;
+  --app-border: #e6eaf1;
+  --app-border-strong: #d5dbe6;
 
-  --app-text-primary: #1f2329;
-  --app-text-regular: #4e5969;
-  --app-text-secondary: #86909c;
+  --app-text-primary: #1b2430;
+  --app-text-regular: #46536b;
+  --app-text-secondary: #8a94a6;
+  --app-text-placeholder: #aab2c0;
 
-  --app-radius: 8px;
+  /* ---------- 圆角 ---------- */
+  --app-radius-sm: 6px;
+  --app-radius: 10px;
+  --app-radius-lg: 16px;
+  --app-radius-pill: 999px;
+
+  /* ---------- 阴影（统一柔和、低饱和，营造纸面感） ---------- */
+  --app-shadow-xs: 0 1px 2px rgba(27, 36, 48, 0.04);
+  --app-shadow-sm: 0 2px 8px rgba(27, 36, 48, 0.06);
+  --app-shadow-md: 0 6px 20px rgba(27, 36, 48, 0.08);
+  --app-shadow-primary: 0 6px 18px rgba(37, 99, 235, 0.18);
+
+  /* ---------- 版式 ---------- */
+  // 系统默认无衬线字体栈（Windows / macOS / Linux 全覆盖）
+  --app-font: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --app-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  /* ---------- 布局尺寸 ---------- */
+  --app-container: 1200px; // 内容区最大宽度
   --app-header-height: 60px;
   --app-sider-width: 220px;
+  --app-transition: 0.2s ease;
 }

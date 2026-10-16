@@ -14,20 +14,63 @@ body,
 }
 
 body {
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial,
-    sans-serif;
+  font-family: var(--app-font);
   font-size: 14px;
+  line-height: 1.6;
   color: var(--app-text-primary);
   background-color: var(--app-bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--app-font);
+  font-weight: 600;
+  color: var(--app-text-primary);
 }
 
 a {
   color: var(--app-primary);
   text-decoration: none;
+  transition: color var(--app-transition);
+
+  &:hover {
+    color: var(--app-primary-hover);
+  }
+}
+
+/* ---------- Element Plus 主题对齐 ---------- */
+:root {
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #6796f2;
+  --el-color-primary-light-5: #93b5f6;
+  --el-color-primary-light-7: #bfd4fa;
+  --el-color-primary-light-8: #d5e3fc;
+  --el-color-primary-light-9: #eef4ff;
+  --el-color-primary-dark-2: #1d4ed8;
+  --el-border-radius-base: 8px;
+  --el-text-color-primary: #1b2430;
+  --el-text-color-regular: #46536b;
+  --el-text-color-secondary: #8a94a6;
+  --el-border-color: #e6eaf1;
+  --el-border-color-lighter: #eef1f6;
+  --el-font-family: var(--app-font);
 }
 
 /* ---------- 通用布局类 ---------- */
+/* 页面居中容器：最大宽度 1200px */
+.app-container {
+  width: 100%;
+  max-width: var(--app-container);
+  margin: 0 auto;
+}
+
 .page-container {
   padding: 20px;
 }
@@ -37,6 +80,7 @@ a {
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   padding: 20px;
+  box-shadow: var(--app-shadow-xs);
 }
 
 .flex-between {
@@ -49,6 +93,188 @@ a {
   color: var(--app-text-secondary);
 }
 
+/* ---------- 动画 ---------- */
+@keyframes app-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ============================================================
+   Markdown 渲染样式（供 MarkdownText 组件使用）
+   仅作用于 .markdown-body 内部，不影响其他区域
+   ============================================================ */
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--app-text-primary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 18px 0 10px;
+    line-height: 1.4;
+  }
+
+  h1 {
+    font-size: 19px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  h2 {
+    font-size: 17px;
+  }
+
+  h3 {
+    font-size: 15px;
+  }
+
+  h4 {
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0 0 10px;
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--app-text-primary);
+  }
+
+  em {
+    font-style: italic;
+  }
+
+  /* 列表 */
+  ul,
+  ol {
+    margin: 0 0 10px;
+    padding-left: 22px;
+  }
+
+  li {
+    margin: 4px 0;
+  }
+
+  li > ul,
+  li > ol {
+    margin: 4px 0 0;
+  }
+
+  /* 行内代码 */
+  code {
+    padding: 1px 6px;
+    font-family: var(--app-font-mono);
+    font-size: 12.5px;
+    color: #b02a5b;
+    background: #f5f0f4;
+    border-radius: var(--app-radius-sm);
+  }
+
+  /* 代码块 */
+  pre {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    background: #f7f9fc;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+
+    code {
+      padding: 0;
+      font-size: 12.5px;
+      color: var(--app-text-regular);
+      background: transparent;
+    }
+  }
+
+  /* 引用块 */
+  blockquote {
+    margin: 0 0 12px;
+    padding: 8px 14px;
+    color: var(--app-text-regular);
+    background: var(--app-primary-soft);
+    border-left: 3px solid var(--app-primary);
+    border-radius: 0 var(--app-radius-sm) var(--app-radius-sm) 0;
+  }
+
+  /* 表格 */
+  table {
+    width: 100%;
+    margin: 0 0 12px;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid var(--app-border);
+  }
+
+  th {
+    background: var(--app-bg-subtle);
+    font-weight: 600;
+  }
+
+  /* 分割线 */
+  hr {
+    height: 1px;
+    margin: 16px 0;
+    border: 0;
+    background: var(--app-border);
+  }
+
+  /* 链接 */
+  a {
+    color: var(--app-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* 图片 */
+  img {
+    max-width: 100%;
+    border-radius: var(--app-radius-sm);
+  }
+}
+
 /* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar {
   width: 8px;
@@ -56,12 +282,12 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c9cdd4;
+  background: #ccd3de;
   border-radius: 4px;
-}
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a9aeb8;
+  &:hover {
+    background: #aeb7c6;
+  }
 }
 
 ::-webkit-scrollbar-track {

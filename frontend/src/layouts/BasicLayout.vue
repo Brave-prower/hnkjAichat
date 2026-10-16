@@ -55,11 +55,13 @@ function handleSelect(path) {
 
       <!-- 内容区 -->
       <el-main class="layout-main">
-        <router-view v-slot="{ Component }">
-          <keep-alive :include="['Home']">
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
+        <div class="layout-container">
+          <router-view v-slot="{ Component }">
+            <keep-alive :include="['Home']">
+              <component :is="Component" />
+            </keep-alive>
+          </router-view>
+        </div>
       </el-main>
     </el-container>
   </el-container>
@@ -98,6 +100,27 @@ function handleSelect(path) {
   border-right: none;
   flex: 1;
   padding-top: 8px;
+
+  /* 选中项：浅蓝底 + 主色文字，弱化边框感 */
+  :deep(.el-menu-item) {
+    height: 42px;
+    margin: 2px 10px;
+    border-radius: var(--app-radius-sm);
+    font-size: 14px;
+    color: var(--app-text-regular);
+    transition: background var(--app-transition), color var(--app-transition);
+
+    &:hover {
+      background: var(--app-bg-subtle);
+      color: var(--app-text-primary);
+    }
+
+    &.is-active {
+      background: var(--app-primary-soft);
+      color: var(--app-primary);
+      font-weight: 600;
+    }
+  }
 }
 
 .layout-header {
@@ -118,5 +141,13 @@ function handleSelect(path) {
   padding: 20px;
   overflow-y: auto;
   background: var(--app-bg);
+}
+
+/* 内容居中，最大宽度 1200px */
+.layout-container {
+  width: 100%;
+  max-width: var(--app-container);
+  height: 100%;
+  margin: 0 auto;
 }
 </style>

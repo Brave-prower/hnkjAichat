@@ -27,8 +27,10 @@ defineProps({
 
   &__title {
     margin: 0;
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--app-text-primary);
   }
 
   &__desc {
