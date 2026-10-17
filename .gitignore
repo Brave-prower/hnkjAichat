@@ -38,6 +38,8 @@ storage/
 # 本地覆盖配置（含密钥，不入库）
 application-local.yml
 .env.local
+# Docker Compose 实际使用的环境变量文件（由 .env.example 复制而来，含真实 Key）
+.env
 # 本地启动脚本（含 API Key，不入库）
 run-backend.ps1
 

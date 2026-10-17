@@ -1,10 +1,14 @@
 # =====================================================
 # 校园问答系统 - 全栈 Docker Compose
 # 服务：PostgreSQL+pgvector  /  Spring Boot 后端  /  Vue 前端（Nginx）
-# 启动：docker compose up -d
-# 访问：http://localhost              -> 前端
-#       http://localhost/api/swagger-ui.html -> 后端接口文档
-#       localhost:5432                -> 数据库（外部工具可直连）
+#
+# 启动前必做：复制 .env.example 为 .env，填入两个 Key
+#   cp .env.example .env      （Windows: copy .env.example .env）
+#
+# 启动：docker compose up -d --build
+# 访问：http://localhost                       -> 前端（上传 / 问答）
+#       http://localhost/api/swagger-ui.html   -> 后端接口文档
+#       localhost:5432                         -> 数据库（外部工具可直连）
 # =====================================================
 
 services:
@@ -51,15 +55,20 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
 
-      # Spring AI / 大模型（请按需覆盖）
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-demo-key}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gpt-4o-mini}
-      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-text-embedding-3-small}
+      # ---- 生成回答：DeepSeek（必需，缺失则每次提问只能返回制度原文兜底）----
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
 
-      # 运行环境：local = 普通表 + Java 余弦检索（pgvector 镜像也能跑，无需扩展）
-      # 想在容器里验证 pgvector 方案时改为 railway
-      SPRING_PROFILES_ACTIVE: local
+      # ---- 向量化：硅基流动 bge-m3（可选，未配置则自动降级为关键词检索）----
+      # 注意：OPENAI_BASE_URL 不能带 /v1，Spring AI 会自己拼 /v1/embeddings
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.siliconflow.cn}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-BAAI/bge-m3}
+
+      # 运行环境：local = 普通表 + Java 余弦检索（无需 pgvector 扩展）
+      # 想在容器里验证 pgvector 方案时改为 railway（需同时把 dimensions 改为 1024）
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
       TZ: Asia/Shanghai
     ports:
       - "8080:8080"

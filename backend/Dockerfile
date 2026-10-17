@@ -41,8 +41,14 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOut
     SPRING_PROFILES_ACTIVE=local
 
 # 容器健康检查：命中 Spring Boot Actuator 的健康端点
-# 注意：context-path=/api，所以应用内路径是 /api/actuator/health
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+# 注意 1：context-path=/api，所以应用内路径是 /api/actuator/health
+# 注意 2：eclipse-temurin:jre-jammy 镜像不含 wget/curl，这里显式安装 wget，
+#         否则 HEALTHCHECK 永远失败、容器一直显示 unhealthy
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/*
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
   CMD wget -qO- http://127.0.0.1:8080/api/actuator/health | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

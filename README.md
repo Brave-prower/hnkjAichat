@@ -17,6 +17,53 @@
 
 ## ⚡ 10 分钟极速复现指南
 
+### 🐳 方式一：Docker 一键启动（推荐，3 分钟）
+
+只需 Docker Desktop，**不用装 JDK / Maven / Node / PostgreSQL**。
+
+**第 1 步：配置 Key（1 分钟）**
+
+```bash
+# 复制环境变量模板
+copy .env.example .env      # Windows
+cp .env.example .env        # macOS / Linux
+```
+
+打开 `.env`，填入至少一个 `DEEPSEEK_API_KEY`（申请：https://platform.deepseek.com）。
+`OPENAI_API_KEY`（硅基流动，向量化用）可选，不填会自动降级为关键词检索。
+
+**第 2 步：启动（1 分钟）**
+
+```bash
+docker compose up -d --build
+```
+
+**第 3 步：访问**
+
+| 地址 | 内容 |
+| --- | --- |
+| http://localhost | 前端（上传规章制度 / 智能问答） |
+| http://localhost:8080/api/swagger-ui.html | 后端接口文档 |
+
+打开 http://localhost → **上传规章制度** 页传一份 PDF → 切到**智能问答**提问。
+
+**常用运维命令**
+
+```bash
+docker compose ps          # 查看三个服务状态（都应 healthy）
+docker compose logs -f backend   # 跟踪后端日志
+docker compose down        # 停止（数据保留在 volume 中）
+docker compose down -v     # 停止并清空数据（含已上传文档）
+```
+
+> **卡住了？** 见文末「[Docker 常见问题](#docker-常见问题)」。
+
+---
+
+### 🛠 方式二：本地开发模式（改代码用）
+
+适合需要调试源码的场景，需自行安装 JDK 17 / Maven / Node 18 / PostgreSQL。
+
 ### 前置条件（2 分钟）
 
 | 依赖 | 版本 | 用途 |
@@ -29,11 +76,11 @@
 ### 第 1 步：启动数据库（1 分钟）
 
 ```bash
-# 方式 A：有 Docker
-docker compose up -d
-
-# 方式 B：本机已装 PostgreSQL，直接建库
+# 方式 A：本机已装 PostgreSQL，直接建库（本项目的向量存储不需要 pgvector 扩展）
 psql -U postgres -c "CREATE DATABASE campus_qa;"
+
+# 方式 B：只用 Docker 起一个数据库，前后端仍在本机跑
+docker compose up -d postgres
 ```
 
 ### 第 2 步：申请两个 Key（3 分钟）
@@ -264,6 +311,60 @@ hnjgAichat/
 <summary><b>回答等待很久才开始输出？</b></summary>
 
 检查 Embedding Key 是否有效。Key 无效时系统自动降级为关键词检索（可用但稍慢）；配置有效 Key 并点「重建索引」即恢复语义检索。
+</details>
+
+### Docker 常见问题
+
+<details>
+<summary><b>端口 80 / 8080 / 5432 被占用？</b></summary>
+
+改 `docker-compose.yml` 里对应服务的 `ports`，冒号左边是宿主机端口。例如前端被占用：
+
+```yaml
+ports:
+  - "8000:80"    # 改为访问 http://localhost:8000
+```
+
+Windows 上 5432 常被本机已装的 PostgreSQL 占用，若不需要外部直连数据库，直接删掉 postgres 的 `ports` 两行即可。
+</details>
+
+<details>
+<summary><b>启动后提问只返回制度原文，没有 AI 回答？</b></summary>
+
+`DEEPSEEK_API_KEY` 没配或无效。确认根目录 `.env` 已填 Key，然后：
+
+```bash
+docker compose up -d --force-recreate backend
+```
+</details>
+
+<details>
+<summary><b>面板显示「关键词检索」而不是「语义检索」？</b></summary>
+
+`OPENAI_API_KEY`（硅基流动）未配置或未实名认证。系统已自动降级，问答仍可用。
+配好 Key 后重启后端，并在文档管理页点「重建索引」把已有文本块补上向量。
+</details>
+
+<details>
+<summary><b>backend 容器一直 unhealthy？</b></summary>
+
+先看日志定位真实原因：
+
+```bash
+docker compose logs backend | tail -50
+```
+
+常见原因：① 首次构建需下载 Maven 依赖，耗时 3~5 分钟，`start-period` 内显示 unhealthy 属正常；② 数据库还没就绪，compose 已配 `depends_on: service_healthy`，通常会自动重试。
+</details>
+
+<details>
+<summary><b>改了代码后容器没变化？</b></summary>
+
+Docker 镜像不会自动跟随源码更新，需要重新构建：
+
+```bash
+docker compose up -d --build
+```
 </details>
 
 ---
