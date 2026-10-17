@@ -76,9 +76,9 @@ public class RagQaService {
     public RagResult answer(String question) {
         Prepared prepared = prepare(question);
 
-        // ---------- 无命中：返回标准应答 ----------
+        // ---------- 无命中：返回标准应答（trace 一并返回，供前端解释为什么拒答） ----------
         if (prepared.hits().isEmpty()) {
-            return new RagResult(NO_REFERENCE_REPLY, List.of());
+            return new RagResult(NO_REFERENCE_REPLY, List.of(), prepared.trace());
         }
 
         // ---------- 调 DeepSeek 生成 ----------
@@ -91,7 +91,7 @@ public class RagQaService {
             throw e;
         }
 
-        return new RagResult(answer, prepared.sources());
+        return new RagResult(answer, prepared.sources(), prepared.trace());
     }
 
     /**
@@ -370,8 +370,9 @@ public class RagQaService {
      *
      * @param answer  模型回答正文
      * @param sources 引用来源（按相似度倒序，可能为空）
+     * @param trace   检索过程快照（透明化面板数据源，拒答时也返回）
      */
-    public record RagResult(String answer, List<SourceRef> sources) {
+    public record RagResult(String answer, List<SourceRef> sources, RetrievalTrace trace) {
     }
 
     /**

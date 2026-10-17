@@ -48,17 +48,20 @@ function parseEventBlock(block) {
  * 使用 fetch + ReadableStream 而非 EventSource，因为需要 POST 传参。
  *
  * 事件协议：
+ * - `trace`  ：检索过程快照（JSON，透明化面板数据源），可能省略
  * - `sources`：引用来源（JSON 数组），在正文之前到达
  * - `message`：回答增量正文，可能出现任意多次
  * - `error`  ：生成失败原因（会以异常形式抛出）
- * - `done`   ：数据固定为 `[DONE]`，表示结束
+ * - `done`   ：JSON `{recordId: number}`（问答记录主键，可null），表示结束；
+ *              兼容旧版固定 `[DONE]`
  *
  * @param {{question: string, sessionId?: string}} payload
- * @param {{onSources?: (sources: Array) => void, onMessage?: (text: string) => void}} handlers
+ * @param {{onTrace?: (trace: Object) => void, onSources?: (sources: Array) => void,
+ *          onMessage?: (text: string) => void, onDone?: (recordId: number|null) => void}} handlers
  * @returns {Promise<void>}
  */
 export async function askQuestionStream(payload, handlers = {}) {
-  const { onSources, onMessage } = handlers
+  const { onTrace, onSources, onMessage, onDone } = handlers
   const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
   const response = await fetch(`${baseURL}/qa/ask/stream`, {
     method: 'POST',
@@ -92,7 +95,15 @@ export async function askQuestionStream(payload, handlers = {}) {
         const parsed = parseEventBlock(block)
         if (!parsed) continue
 
-        if (parsed.data === '[DONE]') {
+        if (parsed.event === 'done' || parsed.data === '[DONE]') {
+          let recordId = null
+          try {
+            const obj = JSON.parse(parsed.data)
+            if (obj && obj.recordId) recordId = obj.recordId
+          } catch {
+            // 旧版固定 [DONE]，无 recordId
+          }
+          onDone?.(recordId)
           finished = true
           break
         }
@@ -102,9 +113,15 @@ export async function askQuestionStream(payload, handlers = {}) {
           } catch {
             // 来源解析失败不影响正文渲染
           }
+        } else if (parsed.event === 'trace') {
+          try {
+            onTrace?.(JSON.parse(parsed.data))
+          } catch {
+            // 快照解析失败不影响正文渲染
+          }
         } else if (parsed.event === 'error') {
           throw new Error(parsed.data || '生成回答失败')
-        } else {
+        } else if (parsed.event === 'message') {
           onMessage?.(parsed.data)
         }
       }
