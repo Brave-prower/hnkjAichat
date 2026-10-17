@@ -289,7 +289,7 @@ public class QaServiceImpl implements QaService {
         }
     }
 
-    /** 把底层异常翻译成用户能看懂的一句话原因 */
+    /** 把底层异常翻译成用户能看懂的一句话原因（不暴露 URL、异常类名等内部细节） */
     private static String briefReason(BizException e) {
         String msg = e.getMessage() == null ? "" : e.getMessage();
         if (msg.contains("401") || msg.contains("UNAUTHORIZED")) {
@@ -303,6 +303,13 @@ public class QaServiceImpl implements QaService {
         }
         if (msg.contains("未配置")) {
             return msg;
+        }
+        if (msg.contains("Connection reset") || msg.contains("timed out")
+                || msg.contains("I/O error") || msg.contains("Socket")) {
+            return "网络连接被中断，重试一次通常即可恢复";
+        }
+        if (msg.contains("timeout") || msg.contains("超时")) {
+            return "生成超时，请稍后重试";
         }
         return msg.length() <= 80 ? msg : msg.substring(0, 80) + "…";
     }

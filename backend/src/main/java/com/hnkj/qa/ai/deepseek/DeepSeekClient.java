@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.io.BufferedReader;
@@ -47,11 +48,19 @@ public class DeepSeekClient {
     private final RestClient restClient;
     private final DeepSeekProperties props;
     private final Duration timeout;
+    /** 网络类异常（连接被重置、超时）的最大重试次数，不含首次尝试 */
+    private final int maxNetworkRetry;
 
     public DeepSeekClient(RestClient restClient, DeepSeekProperties props, Duration timeout) {
+        this(restClient, props, timeout, 0);
+    }
+
+    public DeepSeekClient(RestClient restClient, DeepSeekProperties props,
+                          Duration timeout, int maxNetworkRetry) {
         this.restClient = restClient;
         this.props = props;
         this.timeout = timeout;
+        this.maxNetworkRetry = Math.max(0, maxNetworkRetry);
     }
 
     // ============================================================
@@ -97,8 +106,47 @@ public class DeepSeekClient {
                 thinkingConfig());
 
         ChatResponse response;
+        int attempt = 0;
+        while (true) {
+            try {
+                response = doChatRequest(body);
+                break;
+            } catch (BizException e) {
+                // 仅对网络类异常重试；4xx（Key 无效/余额不足）重试没有意义
+                if (attempt < maxNetworkRetry && isNetworkFailure(e)) {
+                    attempt++;
+                    log.warn("DeepSeek 网络异常，第 {}/{} 次重试：{}", attempt, maxNetworkRetry, e.getMessage());
+                    sleepQuietly(500L * attempt);
+                    continue;
+                }
+                throw e;
+            }
+        }
+
+        if (response == null
+                || response.choices == null
+                || response.choices.isEmpty()
+                || response.choices.get(0).message == null) {
+            throw new BizException(ErrorCode.AI_SERVICE_ERROR, "DeepSeek 响应为空或结构异常");
+        }
+        String content = response.choices.get(0).message.content;
+        if (content == null) {
+            content = "";
+        }
+        log.debug("DeepSeek 调用完成：tokens={} finish={}",
+                response.usage != null ? response.usage.totalTokens : "n/a",
+                response.choices.get(0).finishReason);
+        return content.trim();
+    }
+
+    // ============================================================
+    // 内部：请求封装与重试判定
+    // ============================================================
+
+    /** 发起一次非流式请求，失败统一翻译为 {@link BizException} */
+    private ChatResponse doChatRequest(ChatRequest body) {
         try {
-            response = restClient.post()
+            return restClient.post()
                     .uri("/chat/completions")
                     .body(body)
                     .retrieve()
@@ -125,21 +173,32 @@ public class DeepSeekClient {
             log.error("DeepSeek 调用异常", e);
             throw new BizException(ErrorCode.AI_SERVICE_ERROR, "DeepSeek 调用异常：" + e.getMessage(), e);
         }
+    }
 
-        if (response == null
-                || response.choices == null
-                || response.choices.isEmpty()
-                || response.choices.get(0).message == null) {
-            throw new BizException(ErrorCode.AI_SERVICE_ERROR, "DeepSeek 响应为空或结构异常");
+    /**
+     * 判断是否属于可重试的网络类失败。
+     *
+     * <p>只认「连接被重置 / 超时 / 底层 I/O 错误」，不含 4xx/5xx 业务错误——
+     * 后者重试只会白费时间与配额。</p>
+     */
+    private static boolean isNetworkFailure(BizException e) {
+        if (e.getCause() instanceof ResourceAccessException) {
+            return true;
         }
-        String content = response.choices.get(0).message.content;
-        if (content == null) {
-            content = "";
+        String msg = e.getMessage() == null ? "" : e.getMessage();
+        return msg.contains("Connection reset")
+                || msg.contains("I/O error")
+                || msg.contains("timed out")
+                || msg.contains("SocketException")
+                || msg.contains("超时");
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
-        log.debug("DeepSeek 调用完成：tokens={} finish={}",
-                response.usage != null ? response.usage.totalTokens : "n/a",
-                response.choices.get(0).finishReason);
-        return content.trim();
     }
 
     /**
@@ -179,6 +238,32 @@ public class DeepSeekClient {
                 true,
                 thinkingConfig());
 
+        // 流式重试只对「一个字符都还没吐出去」的失败生效：
+        // 一旦 onDelta 已经推送过内容，重试会造成用户看到重复/拼接的乱码正文。
+        java.util.concurrent.atomic.AtomicBoolean streamed =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+        int attempt = 0;
+        while (true) {
+            try {
+                doStreamRequest(body, onDelta, streamed);
+                log.debug("DeepSeek 流式调用完成");
+                return;
+            } catch (BizException e) {
+                if (attempt < maxNetworkRetry && isNetworkFailure(e) && !streamed.get()) {
+                    attempt++;
+                    log.warn("DeepSeek 流式网络异常，第 {}/{} 次重试：{}",
+                            attempt, maxNetworkRetry, e.getMessage());
+                    sleepQuietly(500L * attempt);
+                    continue;
+                }
+                throw e;
+            }
+        }
+    }
+
+    /** 发起一次流式请求；已推送内容会标记到 {@code streamed} 上，用于判断能否安全重试 */
+    private void doStreamRequest(ChatRequest body, Consumer<String> onDelta,
+                                 java.util.concurrent.atomic.AtomicBoolean streamed) {
         try {
             restClient.post()
                     .uri("/chat/completions")
@@ -210,12 +295,12 @@ public class DeepSeekClient {
                                 String delta = parseDelta(payload);
                                 if (delta != null && !delta.isEmpty()) {
                                     onDelta.accept(delta);
+                                    streamed.set(true);
                                 }
                             }
                         }
                         return null;
                     });
-            log.debug("DeepSeek 流式调用完成");
         } catch (BizException e) {
             throw e;
         } catch (Exception e) {
