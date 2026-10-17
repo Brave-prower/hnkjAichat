@@ -81,7 +81,17 @@ AI 生成的代码容易发散，本项目用三个手段把它约束住：
 | 生成降级 | DeepSeek 失败时用户拿到空白 | SSE 不中断，推送制度原文摘录 |
 | 参数校验走事件通道 | `@Valid` JSON 错误体与 `text/event-stream` 冲突（406） | 校验下沉 Service，错误经 `error` 事件下发 |
 
-### 2.4 性能
+### 2.4 检索透明化（亮点）
+
+传统 RAG 对用户是黑盒：为什么这么答？依据可信吗？本系统把检索打分过程完整暴露给用户——每轮回答附带一个 `RetrievalTrace` 快照，前端以「为什么这样答」面板呈现：
+
+- **全量候选打分**：`JdbcCosineVectorStore#similaritySearch` 不再在存储层截断，返回全部候选及其余弦分数；阈值过滤与 Top-K 截断职责上移到 `RagQaService#prepare`，职责更清晰且可观测。
+- **Trace 结构**：记录模式（semantic / keyword / keyword-fallback）、阈值、TopK、检索耗时、熔断状态、闸门结论（`PASS` / `REJECT_ALL_BELOW_THRESHOLD`）与人话解释，以及最多 20 条候选（标题 + 页码 + 分数 + 是否命中 + 原文片段）。
+- **传输**：SSE 协议升级为 `trace → sources → message* → done`，trace 事件先于正文到达；同步接口 `/api/qa/ask` 响应体同样携带 `trace`。
+- **前端呈现**：分数条主色渐变 + 阈值竖刻度线，命中/未命中徽标，拒答时用「宁可不答也不编造」的人话解释闸门结论。
+- **演示数据**：`docs/scripts/gen-demo-traces.py` 调用真实接口生成 5 组 trace（2 组放行：0.708 / 0.779；3 组拒答：0.534 / 0.425 / 0.431），结果存于脚本同目录 `demo-traces-result.json`。
+
+### 2.5 性能
 
 - 端到端响应：**1.6 ~ 2.7s**（含向量检索 + DeepSeek 流式首字）
 - 检索：40 块规模全量内存余弦 < 10ms；数据量增长可无感切换 pgvector HNSW
