@@ -14,6 +14,7 @@
 保存到 docs/scripts/demo-traces-result.json。
 """
 import json
+import os
 import sys
 import urllib.request
 
@@ -65,7 +66,7 @@ def main() -> int:
             print("    （无候选，走无向量关键词兜底或空库）")
         results.append({"kind": kind, "question": q, "trace": trace, "recordId": r.get("recordId")})
 
-    out = "demo-traces-result.json"
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo-traces-result.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print(f"\n完整数据已保存: {out}")
