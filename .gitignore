@@ -48,3 +48,6 @@ run-backend.ps1
 # ---------- 临时脚本 / 调试产物 ----------
 .tmp-*
 *.tmp
+
+# 演示脚本运行产物（每次跑都变，含真实调用结果，不入库）
+docs/scripts/demo-traces-result.json
