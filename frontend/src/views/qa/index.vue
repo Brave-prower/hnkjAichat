@@ -15,6 +15,7 @@ import { useChatStore } from '@/stores/chat'
 import { askQuestionStream } from '@/api/chat'
 import SourceCitation from '@/components/SourceCitation.vue'
 import MarkdownText from '@/components/MarkdownText.vue'
+import RetrievalTracePanel from '@/components/RetrievalTracePanel.vue'
 import { genSessionId } from '@/utils/format'
 
 const chatStore = useChatStore()
@@ -80,6 +81,9 @@ async function runAsk(text) {
     role: 'assistant',
     content: '',
     sources: [],
+    trace: null,
+    showTrace: false,
+    recordId: null,
     streaming: true
   })
   await scrollToBottom(true)
@@ -88,6 +92,9 @@ async function runAsk(text) {
     await askQuestionStream(
       { question: text, sessionId: chatStore.sessionId },
       {
+        onTrace: (trace) => {
+          chatStore.setTrace(trace)
+        },
         onSources: (sources) => {
           chatStore.setSources(sources)
           scrollToBottom()
@@ -95,6 +102,9 @@ async function runAsk(text) {
         onMessage: (chunk) => {
           chatStore.appendChunk(chunk)
           scrollToBottom()
+        },
+        onDone: (recordId) => {
+          chatStore.setRecordId(recordId)
         }
       }
     )
@@ -179,6 +189,11 @@ function isLastStreaming(msg, index) {
     index === chatStore.messages.length - 1 &&
     !!msg.streaming
   )
+}
+
+/** 切换某条消息的透明化面板展开状态 */
+function toggleTrace(msg) {
+  msg.showTrace = !msg.showTrace
 }
 
 onMounted(() => scrollToBottom(true))
@@ -281,6 +296,28 @@ onMounted(() => scrollToBottom(true))
               v-if="msg.role === 'assistant' && msg.content && msg.sources?.length"
               :sources="msg.sources"
             />
+
+            <!-- 透明化面板入口：有 trace 即可看（拒答场景也能解释为什么拒答） -->
+            <div
+              v-if="msg.role === 'assistant' && msg.trace"
+              class="msg__trace-entry"
+            >
+              <button
+                type="button"
+                class="trace-toggle"
+                :aria-expanded="!!msg.showTrace"
+                @click="toggleTrace(msg)"
+              >
+                <el-icon><DataAnalysis /></el-icon>
+                为什么这样答
+                <el-icon class="trace-toggle__arrow" :class="{ 'is-open': msg.showTrace }">
+                  <ArrowDown />
+                </el-icon>
+              </button>
+            </div>
+            <div v-if="msg.showTrace && msg.trace" class="msg__trace">
+              <RetrievalTracePanel :trace="msg.trace" />
+            </div>
           </div>
         </div>
       </div>
@@ -524,6 +561,44 @@ onMounted(() => scrollToBottom(true))
   &__error-text {
     margin: 0;
     line-height: 1.6;
+  }
+
+  /* ---------- 透明化面板入口 ---------- */
+  &__trace-entry {
+    margin-top: 8px;
+  }
+
+  &__trace {
+    margin-top: 6px;
+  }
+}
+
+.trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--app-text-secondary);
+  background: none;
+  border: 1px dashed var(--app-border);
+  border-radius: var(--app-radius-pill);
+  cursor: pointer;
+  transition: all var(--app-transition);
+
+  &:hover {
+    color: var(--app-primary);
+    border-color: var(--app-primary-border);
+    background: var(--app-primary-soft);
+  }
+
+  &__arrow {
+    transition: transform var(--app-transition);
+
+    &.is-open {
+      transform: rotate(180deg);
+    }
   }
 }
 

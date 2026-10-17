@@ -15,6 +15,8 @@ export const useChatStore = defineStore('chat', () => {
    *   role: 'user' | 'assistant',
    *   content: string,
    *   sources: Array,
+   *   trace?: Object,        // 检索过程快照（透明化面板数据源）
+   *   recordId?: number,     // 问答记录主键（供反馈评价）
    *   streaming?: boolean,   // 是否仍在流式生成（决定「正在思考」动画）
    *   error?: string,        // 生成失败时的友好提示
    *   retryText?: string     // 失败后用于重试的原始问题
@@ -54,6 +56,22 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /** 给最后一条 assistant 消息挂上检索过程快照（trace 事件先于正文到达） */
+  function setTrace(trace) {
+    const last = messages.value[messages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.trace = trace || null
+    }
+  }
+
+  /** 给最后一条 assistant 消息挂上问答记录主键（done 事件到达） */
+  function setRecordId(recordId) {
+    const last = messages.value[messages.value.length - 1]
+    if (last && last.role === 'assistant' && recordId) {
+      last.recordId = recordId
+    }
+  }
+
   /** 标记最后一条 assistant 消息生成结束 */
   function finishStreaming() {
     const last = messages.value[messages.value.length - 1]
@@ -76,6 +94,8 @@ export const useChatStore = defineStore('chat', () => {
     removeMessage,
     appendChunk,
     setSources,
+    setTrace,
+    setRecordId,
     finishStreaming,
     clear
   }
