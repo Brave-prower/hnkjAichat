@@ -98,35 +98,35 @@ class JdbcCosineVectorStoreTest {
     // ==================== 检索 ====================
 
     @Test
-    @DisplayName("相似检索：按余弦降序取 Top-3，低于阈值的被过滤")
-    void similaritySearchReturnsTopKOrdered() {
-        // 查询向量 (1, 0)：与各块的相似度分别为 1.0 / 0.8 / ~0.707 / 0.0
+    @DisplayName("相似检索：全量打分按余弦降序返回（阈值与 TopK 过滤上移给调用方）")
+    void similaritySearchScoresAllCandidates() {
+        // 查询向量 (1, 0)：与各块的相似度分别为 1.0 / 0.8 / ~0.707 / 0.5 / 0.0
         when(embeddingModel.embed("学籍管理")).thenReturn(new float[]{1f, 0f});
         when(repository.findAll()).thenReturn(List.of(
-                chunk("c-low", "无关内容", new float[]{0f, 1f}),          // 相似度 0.0 → 被阈值过滤
+                chunk("c-low", "无关内容", new float[]{0f, 1f}),          // 相似度 0.0 → 也在候选里，hit 判断交给调用方
                 chunk("c-3", "第三相似", new float[]{0.7071f, 0.7071f}),  // ~0.707
                 chunk("c-1", "最相似", new float[]{1f, 0f}),              // 1.0
                 chunk("c-2", "第二相似", new float[]{0.8f, 0.6f}),        // 0.8
-                chunk("c-mid", "中等", new float[]{0.5f, 0.866f})));      // 0.5 → 被阈值过滤
-        when(repository.count()).thenReturn(5L);
+                chunk("c-mid", "中等", new float[]{0.5f, 0.866f})));      // 0.5 → 同样返回
 
-        List<Document> hits = store.similaritySearch(SearchRequest.builder()
+        List<Document> candidates = store.similaritySearch(SearchRequest.builder()
                 .query("学籍管理")
                 .topK(3)
                 .similarityThreshold(0.6)
                 .build());
 
-        assertThat(hits).hasSize(3);
-        assertThat(hits).extracting(Document::getText)
-                .containsExactly("最相似", "第二相似", "第三相似");
+        // 全量候选都返回，不再在存储层过滤阈值 / 截断 TopK
+        assertThat(candidates).hasSize(5);
+        assertThat(candidates).extracting(Document::getText)
+                .containsExactly("最相似", "第二相似", "第三相似", "中等", "无关内容");
         // 元数据携带相似度得分，且按得分降序
-        double s1 = (double) hits.get(0).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
-        double s2 = (double) hits.get(1).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
-        double s3 = (double) hits.get(2).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
+        double s1 = (double) candidates.get(0).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
+        double s2 = (double) candidates.get(1).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
+        double s3 = (double) candidates.get(2).getMetadata().get(JdbcCosineVectorStore.META_SIMILARITY);
         assertThat(s1).isGreaterThan(s2).isGreaterThan(s3);
         assertThat(s1).isCloseTo(1.0, within(1e-6));
         // 原始元数据（页码）透传
-        assertThat(hits.get(0).getMetadata()).containsEntry("page_number", 2);
+        assertThat(candidates.get(0).getMetadata()).containsEntry("page_number", 2);
     }
 
     // ==================== 删除 ====================

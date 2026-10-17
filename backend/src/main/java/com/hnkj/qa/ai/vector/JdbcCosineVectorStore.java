@@ -211,10 +211,20 @@ public class JdbcCosineVectorStore implements VectorStore {
 
     /**
      * 检索策略：已向量化的文本块走余弦语义检索，未向量化的文本块走关键词匹配，
-     * 两路结果合并后按得分取 Top-K。因此无论 Embedding 是否可用，都能召回内容。
+     * 两路结果合并后按得分<b>倒序返回全部候选</b>。
+     *
+     * <p><b>职责变化（透明化）</b>：相似度阈值与 Top-K 的过滤职责已上移到调用方
+     * （{@code RagQaService}），本方法只负责打分与排序，便于上层构建包含
+     * 「未过阈值候选」的检索快照 {@link com.hnkj.qa.ai.RetrievalTrace}。
+     * 关键词路保留内部相关性下限 {@link #KEYWORD_MIN_SCORE}（它过滤的是
+     * “毫无重叠”的噪声，而非业务阈值）。</p>
+     *
+     * <p>注意：railway profile（PgVectorStore）仍会在存储层过滤阈值，
+     * 届时候选集只含已过阈值的部分，透明化面板的候选列表会变短但功能不受影响。</p>
      */
     @Override
     public List<Document> similaritySearch(SearchRequest request) {
+        long start = System.currentTimeMillis();
         List<VectorChunk> all = repository.findAll();
         if (all.isEmpty()) {
             return List.of();
@@ -226,13 +236,11 @@ public class JdbcCosineVectorStore implements VectorStore {
         float[] queryVector = tryEmbedOne(request.getQuery());
         List<Scored> scored = new ArrayList<>();
 
-        // ---------- 第一路：语义检索（余弦） ----------
+        // ---------- 第一路：语义检索（余弦）——全量打分，不筛阈值 ----------
         if (queryVector != null && !vectorized.isEmpty()) {
             for (VectorChunk chunk : vectorized) {
                 double score = CosineSimilarity.between(queryVector, chunk.getEmbedding());
-                if (score >= request.getSimilarityThreshold()) {
-                    scored.add(new Scored(chunk, score, "semantic"));
-                }
+                scored.add(new Scored(chunk, score, "semantic"));
             }
         }
 
@@ -246,14 +254,22 @@ public class JdbcCosineVectorStore implements VectorStore {
 
         List<Document> result = scored.stream()
                 .sorted(Comparator.comparingDouble(Scored::score).reversed())
-                .limit(request.getTopK())
                 .map(this::toDocument)
                 .toList();
 
-        log.debug("检索完成：问题向量维度={}，库内 {} 块（已向量化 {} / 未向量化 {}），命中 {} 条",
+        log.debug("检索完成：问题向量维度={}，库内 {} 块（已向量化 {} / 未向量化 {}），候选 {} 条，耗时 {}ms",
                 queryVector == null ? 0 : queryVector.length,
-                all.size(), vectorized.size(), plain.size(), result.size());
+                all.size(), vectorized.size(), plain.size(), result.size(),
+                System.currentTimeMillis() - start);
         return result;
+    }
+
+    /**
+     * Embedding 熔断器是否处于打开状态。
+     * <p>供 {@code RagQaService} 构建 {@link com.hnkj.qa.ai.RetrievalTrace} 时透出。</p>
+     */
+    public boolean isEmbeddingBroken() {
+        return embedBroken();
     }
 
     private boolean hasVector(VectorChunk chunk) {

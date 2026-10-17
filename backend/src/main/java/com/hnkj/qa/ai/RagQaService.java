@@ -1,6 +1,7 @@
 package com.hnkj.qa.ai;
 
 import com.hnkj.qa.ai.deepseek.DeepSeekClient;
+import com.hnkj.qa.ai.vector.JdbcCosineVectorStore;
 import com.hnkj.qa.common.enums.ErrorCode;
 import com.hnkj.qa.common.exception.BizException;
 import com.hnkj.qa.config.properties.QaProperties;
@@ -106,37 +107,123 @@ public class RagQaService {
             throw new BizException(ErrorCode.QUESTION_EMPTY);
         }
 
-        // ---------- 1. 相似度检索 ----------
+        int topK = qaProperties.getTopK();
+        double threshold = qaProperties.getSimilarityThreshold();
+
+        // ---------- 1. 全量打分（存储层已不再过滤，阈值/TopK 职责上移至此） ----------
+        long start = System.currentTimeMillis();
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(question)
-                .topK(qaProperties.getTopK())
-                .similarityThreshold(qaProperties.getSimilarityThreshold())
+                .topK(topK)
+                .similarityThreshold(threshold)
                 .build();
-        List<Document> hits = vectorStore.similaritySearch(searchRequest);
-        log.info("RAG 检索：问题=[{}]，Top-K={} 阈值={}，命中 {} 条",
-                truncate(question, 40), qaProperties.getTopK(),
-                qaProperties.getSimilarityThreshold(), hits.size());
+        List<Document> allCandidates = vectorStore.similaritySearch(searchRequest);
+
+        // ---------- 1.5 业务阈值过滤 + Top-K 截断（按分数倒序传入） ----------
+        List<Document> passed = allCandidates.stream()
+                .filter(d -> {
+                    Double s = doubleOr(d.getMetadata(), "similarity");
+                    return s != null && s >= threshold;
+                })
+                .toList();
+        List<Document> hits = passed.size() > topK ? passed.subList(0, topK) : passed;
+        log.info("RAG 检索：问题=[{}]，候选 {} 条，过阈值(≥{}) {} 条，取 Top-{}，命中 {} 条，耗时 {}ms",
+                truncate(question, 40), allCandidates.size(), threshold,
+                passed.size(), topK, hits.size(), System.currentTimeMillis() - start);
+
+        // ---------- 1.8 检索过程快照（透明化面板数据源） ----------
+        RetrievalTrace trace = buildTrace(allCandidates, passed, hits, topK, threshold,
+                System.currentTimeMillis() - start);
 
         if (hits.isEmpty()) {
-            return new Prepared(List.of(), null, null, List.of());
+            return new Prepared(List.of(), null, null, List.of(), trace);
         }
 
-        // ---------- 1.5 相关性闸门：最高分过低说明只是关键词弱重叠，宁可不作答 ----------
+        // ---------- 2. 相关性闸门：最高分过低说明只是关键词弱重叠，宁可不作答 ----------
         Double topScore = topSimilarity(hits);
         if (topScore != null && topScore < qaProperties.getMinAnswerableScore()) {
             log.info("RAG 相关性闸门：最高分 {} 低于阈值 {}，按无命中处理（避免弱相关来源误导用户）",
                     String.format("%.3f", topScore), qaProperties.getMinAnswerableScore());
-            return new Prepared(List.of(), null, null, List.of());
+            return new Prepared(List.of(), null, null, List.of(), trace);
         }
 
-        // ---------- 2. 拼上下文 + 提示词 ----------
+        // ---------- 3. 拼上下文 + 提示词 ----------
         String context = renderContext(hits);
         String systemPrompt = systemPromptTemplate
                 .replace("{context}", context)
                 .replace("{question}", question);
 
-        // ---------- 3. 构造 SourceRef 列表（按相似度倒序、去重 documentId+page） ----------
-        return new Prepared(hits, systemPrompt, USER_PROMPT, toSourceRefs(hits));
+        // ---------- 4. 构造 SourceRef 列表（按相似度倒序、去重 documentId+page） ----------
+        return new Prepared(hits, systemPrompt, USER_PROMPT, toSourceRefs(hits), trace);
+    }
+
+    /**
+     * 构建检索过程快照。
+     *
+     * @param hitSet 实际命中（过阈值且在 Top-K 内）的文档集合
+     */
+    private RetrievalTrace buildTrace(List<Document> allCandidates, List<Document> passed,
+                                      List<Document> hits, int topK, double threshold, long costMs) {
+        boolean embeddingBroken = vectorStore instanceof JdbcCosineVectorStore store
+                && store.isEmbeddingBroken();
+
+        List<RetrievalTrace.TraceItem> items = new ArrayList<>();
+        boolean anySemantic = false;
+        for (Document d : allCandidates) {
+            if (items.size() >= RetrievalTrace.MAX_CANDIDATES) {
+                break;
+            }
+            Map<String, Object> meta = d.getMetadata() == null ? Map.of() : d.getMetadata();
+            Double score = doubleOr(meta, "similarity");
+            if (score == null) {
+                continue;
+            }
+            String mode = stringOr(meta, JdbcCosineVectorStore.META_RETRIEVAL_MODE, "");
+            anySemantic = anySemantic || "semantic".equals(mode);
+            boolean hit = hits.stream().anyMatch(h -> h.getId().equals(d.getId()));
+            items.add(RetrievalTrace.TraceItem.builder()
+                    .chunkId(d.getId())
+                    .documentId(longOr(meta, "documentId"))
+                    .title(stringOr(meta, "title", "未知文档"))
+                    .pageNumber(intOr(meta, "page_number"))
+                    .score(Math.round(score * 10000.0) / 10000.0)
+                    .hit(hit)
+                    .snippet(truncate(d.getText(), 80))
+                    .build());
+        }
+
+        String mode = anySemantic ? "semantic"
+                : (embeddingBroken ? "keyword-fallback" : "keyword");
+
+        String gate;
+        String gateReason;
+        if (!hits.isEmpty()) {
+            gate = RetrievalTrace.GATE_PASS;
+            gateReason = "最高分 " + formatScore(topSimilarity(hits))
+                    + " ≥ 最低可答分 " + qaProperties.getMinAnswerableScore() + "，放行作答";
+        } else {
+            gate = RetrievalTrace.GATE_REJECT_ALL_BELOW_THRESHOLD;
+            Double best = topSimilarity(allCandidates);
+            gateReason = best == null
+                    ? "知识库中没有可参与比较的候选"
+                    : "最高分 " + formatScore(best) + " 未达到相似度阈值 " + threshold
+                            + "，宁可不答也不编造";
+        }
+
+        return RetrievalTrace.builder()
+                .mode(mode)
+                .threshold(threshold)
+                .topK(topK)
+                .costMs(costMs)
+                .embeddingBroken(embeddingBroken)
+                .gate(gate)
+                .gateReason(gateReason)
+                .candidates(items)
+                .build();
+    }
+
+    private static String formatScore(Double score) {
+        return score == null ? "-" : String.format("%.4f", score);
     }
 
     /**
@@ -290,15 +377,17 @@ public class RagQaService {
     /**
      * 检索阶段产物，供"同步生成"与"流式生成"两条链路复用。
      *
-     * @param hits         命中的文档片段
+     * @param hits         命中的文档片段（过阈值且在 Top-K 内）
      * @param systemPrompt 已填充 {context}/{question} 的系统提示词（无命中时为 null）
      * @param userPrompt   固定的 user 指令（无命中时为 null）
      * @param sources      引用来源列表
+     * @param trace        检索过程快照（透明化面板数据源）
      */
     public record Prepared(
             List<Document> hits,
             String systemPrompt,
             String userPrompt,
-            List<SourceRef> sources) {
+            List<SourceRef> sources,
+            RetrievalTrace trace) {
     }
 }
