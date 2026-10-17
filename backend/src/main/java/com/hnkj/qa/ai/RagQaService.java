@@ -166,6 +166,8 @@ public class RagQaService {
                                       List<Document> hits, int topK, double threshold, long costMs) {
         boolean embeddingBroken = vectorStore instanceof JdbcCosineVectorStore store
                 && store.isEmbeddingBroken();
+        String embeddingBrokenReason = vectorStore instanceof JdbcCosineVectorStore store
+                ? store.embeddingBrokenReason() : "NONE";
 
         List<RetrievalTrace.TraceItem> items = new ArrayList<>();
         boolean anySemantic = false;
@@ -216,6 +218,7 @@ public class RagQaService {
                 .topK(topK)
                 .costMs(costMs)
                 .embeddingBroken(embeddingBroken)
+                .embeddingBrokenReason(embeddingBrokenReason)
                 .gate(gate)
                 .gateReason(gateReason)
                 .candidates(items)

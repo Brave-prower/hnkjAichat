@@ -41,6 +41,18 @@ const gateBadge = computed(() => {
   return { text: '闸门拒绝', cls: 'badge--reject' }
 })
 
+/** 熔断原因 → 准确文案（避免把「网络抖动」误报成「Key 没配」） */
+const breakerText = computed(() => {
+  const reason = props.trace?.embeddingBrokenReason
+  if (reason === 'KEY_MISSING') {
+    return '未配置 Embedding Key，本次为关键词检索（配置 OPENAI_API_KEY 后重启即启用语义检索）'
+  }
+  if (reason === 'SERVICE_UNSTABLE') {
+    return '向量服务本次请求失败，已自动降级为关键词检索（已熔断，数分钟后自动恢复语义检索）'
+  }
+  return '向量检索暂不可用，本次为关键词检索（自动恢复中）'
+})
+
 const candidates = computed(() => props.trace?.candidates || [])
 const hitCount = computed(() => candidates.value.filter((c) => c.hit).length)
 const shown = computed(() => candidates.value.slice(0, props.previewCount))
@@ -60,7 +72,7 @@ const scoreText = (score) => score.toFixed(4)
     <!-- 熔断提示 -->
     <div v-if="trace.embeddingBroken" class="trace-panel__breaker">
       <el-icon><WarningFilled /></el-icon>
-      Embedding 服务暂不可用，本次为关键词检索（自动恢复中）
+      {{ breakerText }}
     </div>
 
     <!-- 摘要条 -->

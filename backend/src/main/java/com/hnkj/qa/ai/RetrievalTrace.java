@@ -30,6 +30,8 @@ public record RetrievalTrace(
         long costMs,
         /** Embedding 熔断器是否处于打开状态（true 时本次必然走关键词） */
         boolean embeddingBroken,
+        /** 熔断原因：KEY_MISSING（从未配置 Key）/ SERVICE_UNSTABLE（曾成功、当前抖动）/ NONE */
+        String embeddingBrokenReason,
         /** 闸门结论：PASS / REJECT_ALL_BELOW_THRESHOLD */
         String gate,
         /** 闸门结论的人话解释 */

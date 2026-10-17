@@ -100,11 +100,17 @@ public class JdbcCosineVectorStore implements VectorStore {
     /** 熔断到期时间戳（epoch ms）；熔断期间检索直接走关键词 */
     private volatile long embedBreakerOpenUntil = 0L;
 
-    /** 失败 1 次即熔断：一次失败往往意味着要白等一次网络超时，没必要再试 */
-    private static final int EMBED_BREAKER_THRESHOLD = 1;
+    /**
+     * 连续失败达到该次数才熔断。
+     *
+     * <p>不能设成 1：真实网络存在偶发 {@code Connection reset}（瞬时抖动），
+     * 失败一次就熔断 10 分钟会造成「服务其实正常、用户却拿到关键词检索」的误伤。
+     * 而 Key 失效这类持续性故障会在 3 次内快速触发熔断，仍能避免每次提问白等重试超时。</p>
+     */
+    private static final int EMBED_BREAKER_THRESHOLD = 3;
 
-    /** 熔断持续时长：期间提问不再等 Embedding 重试超时 */
-    private static final Duration EMBED_COOLDOWN = Duration.ofMinutes(10);
+    /** 熔断持续时长：期间提问不再等 Embedding 重试超时（较短期，便于网络恢复后自动回升） */
+    private static final Duration EMBED_COOLDOWN = Duration.ofMinutes(3);
 
     // ==================== 写入 ====================
 
@@ -270,6 +276,21 @@ public class JdbcCosineVectorStore implements VectorStore {
      */
     public boolean isEmbeddingBroken() {
         return embedBroken();
+    }
+
+    /**
+     * 熔断原因分类，供前端给出准确提示文案：
+     * <ul>
+     *   <li>{@code KEY_MISSING} —— 启动时 Key 就是占位符，从未配置过</li>
+     *   <li>{@code SERVICE_UNSTABLE} —— 曾成功向量化，当前因网络/服务抖动暂时熔断</li>
+     *   <li>{@code NONE} —— 未熔断</li>
+     * </ul>
+     */
+    public String embeddingBrokenReason() {
+        if (embeddingDisabledAtStartup) {
+            return "KEY_MISSING";
+        }
+        return embedBroken() ? "SERVICE_UNSTABLE" : "NONE";
     }
 
     private boolean hasVector(VectorChunk chunk) {
