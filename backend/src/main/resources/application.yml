@@ -63,20 +63,20 @@ spring:
         multiplier: 2
         max-interval: 2000
     openai:
+      # 说明：这里的 openai.* 仅用于 Embedding（生成回答走自研 DeepSeekClient，
+      # 不使用 Spring AI 的 ChatModel/ChatClient，故无 chat.options 配置）
       # 未配置环境变量时使用占位值，保证应用可正常启动
       api-key: ${OPENAI_API_KEY:demo-key}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
-      chat:
-        options:
-          model: ${AI_CHAT_MODEL:gpt-4o-mini}
-          temperature: 0.2
       embedding:
         options:
           model: ${AI_EMBEDDING_MODEL:text-embedding-3-small}
     vectorstore:
       pgvector:
         initialize-schema: true
-        dimensions: 1536
+        # 维度必须与 embedding 模型一致：BAAI/bge-m3 为 1024 维
+        # （仅 railway profile 使用 pgvector；local profile 用 JdbcCosineVectorStore，与维度无关）
+        dimensions: 1024
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         table-name: vector_store
