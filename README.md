@@ -358,6 +358,14 @@ docker compose logs backend | tail -50
 </details>
 
 <details>
+<summary><b>首次构建镜像很慢或卡在依赖下载？</b></summary>
+
+项目已内置两层加速：Maven 依赖走阿里云镜像源（`backend/docker-mvn-settings.xml`，仅构建期生效），Docker Hub 基础镜像可在 Docker Desktop 的 Docker Engine 设置中添加 `registry-mirrors`（国内网络实测必需）。
+
+首次构建需下载基础镜像 + 全部依赖（约 1.5GB），国内网络通常 10~15 分钟；之后源码改动触发的重建只编译增量，1~2 分钟即可。
+</details>
+
+<details>
 <summary><b>改了代码后容器没变化？</b></summary>
 
 Docker 镜像不会自动跟随源码更新，需要重新构建：

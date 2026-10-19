@@ -53,3 +53,7 @@ run-backend.ps1
 
 # 演示脚本运行产物（每次跑都变，含真实调用结果，不入库）
 docs/scripts/demo-traces-result.json
+
+# Docker 本机测试产物（端口覆盖文件因机器而异；构建日志为临时输出）
+.docker-test-override.yml
+docker-build.log

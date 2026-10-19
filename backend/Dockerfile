@@ -8,6 +8,10 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /workspace
 
+# Maven 镜像源加速（阿里云 public，国内网络实测 Central 直连会长时间卡住）
+# 仅构建期生效，不影响运行时
+COPY docker-mvn-settings.xml /root/.m2/settings.xml
+
 # 先拷贝 pom.xml 并下载依赖，利用 Docker 缓存：源码没变时依赖层不会重新拉
 COPY pom.xml .
 RUN mvn -B -e -ntp dependency:go-offline
