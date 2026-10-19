@@ -24,9 +24,14 @@ RUN mvn -B -e -ntp -DskipTests package
 FROM eclipse-temurin:17-jre-jammy
 
 # 时区与字符集
+# 注意：本镜像（jammy）只自带 C/C.utf8/POSIX/en_US.utf8，**没有 zh_CN.UTF-8**。
+# 若写成 LANG=zh_CN.UTF-8 而镜像未生成本地化，glibc 会静默回退到 POSIX，
+# JVM 的 sun.jnu.encoding 变成 ANSI_X3.4-1968(ASCII)，中文文件名构造 Path 时
+# 直接抛 InvalidPathException —— 表现为「上传失败」。
+# 因此必须用镜像内确实存在的 C.UTF-8。
 ENV TZ=Asia/Shanghai \
-    LANG=zh_CN.UTF-8 \
-    LC_ALL=zh_CN.UTF-8
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
 WORKDIR /app
 

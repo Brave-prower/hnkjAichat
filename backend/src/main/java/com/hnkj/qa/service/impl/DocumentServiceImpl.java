@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -61,9 +62,13 @@ public class DocumentServiceImpl implements DocumentService {
         } catch (IOException e) {
             throw new BizException(ErrorCode.DOCUMENT_UPLOAD_FAILED, "创建上传目录失败", e);
         }
-        // 加时间戳前缀避免重名覆盖，同时过滤文件名中的非法字符
+        // 物理文件名一律使用纯 ASCII（时间戳 + UUID），原始文件名只存数据库。
+        // 原因：
+        //   1) 容器/宿主机 locale 不是 UTF-8 时，中文文件名构造 Path 会抛
+        //      InvalidPathException（Android/Temurin slim 镜像常见）；
+        //   2) 天然规避路径穿越（../）、超长文件名、Windows 非法字符等问题。
         String storedName = System.currentTimeMillis() + "_"
-                + originalName.replaceAll("[\\\\/:*?\"<>|\\s]", "_");
+                + UUID.randomUUID().toString().replace("-", "") + ".pdf";
         Path target = dir.resolve(storedName);
         try {
             file.transferTo(target);
