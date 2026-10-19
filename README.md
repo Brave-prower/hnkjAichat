@@ -339,6 +339,31 @@ docker compose up -d --force-recreate backend
 </details>
 
 <details>
+<summary><b>上传 PDF 失败 / 提示「服务器处理失败」/ 413？</b></summary>
+
+先看后端日志拿到真实原因：
+
+```bash
+docker compose logs backend | tail -50
+```
+
+本项目已修复两个历史上会导致上传失败的缺陷（v1.0.0 之后）：
+
+1. **中文文件名编码**：早期 `Dockerfile` 用了镜像内不存在的 `zh_CN.UTF-8` locale，
+   JVM 回退到 ASCII，中文文件名构造路径时抛 `InvalidPathException`。
+   现改用 `C.UTF-8`，并把落盘文件名改为纯 ASCII 的「时间戳 + UUID」
+   （原始文件名仍完整保存在数据库并正常展示）。
+2. **Nginx 默认 1MB 体积上限**：早期 `nginx.conf` 未设 `client_max_body_size`，
+   超过 1MB 的 PDF 在代理层直接被 413 拒绝。现放开到 60MB，与后端上限对齐。
+
+若你的镜像是在修复前构建的，重新构建即可：
+
+```bash
+docker compose up -d --build
+```
+</details>
+
+<details>
 <summary><b>面板显示「关键词检索」而不是「语义检索」？</b></summary>
 
 `OPENAI_API_KEY`（硅基流动）未配置或未实名认证。系统已自动降级，问答仍可用。
