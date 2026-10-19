@@ -11,5 +11,5 @@ pnpm-debug.log*
 .gitignore
 Dockerfile
 .dockerignore
-nginx.conf
 README.md
+# 注意：不要忽略 nginx.conf —— Dockerfile 里 COPY nginx.conf 会因文件不存在而构建失败
