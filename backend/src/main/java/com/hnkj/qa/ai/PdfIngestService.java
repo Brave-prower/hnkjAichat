@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -42,6 +43,8 @@ public class PdfIngestService {
     public static final String META_PAGE_NUMBER = "page_number";
     /** 向量库中标记文档标题的元数据键 */
     public static final String META_TITLE = "title";
+    /** 向量库中标记文本块全局顺序号的元数据键（从 0 开始） */
+    public static final String META_CHUNK_INDEX = "chunk_index";
 
     private final VectorStore vectorStore;
     private final QaProperties qaProperties;
@@ -109,16 +112,20 @@ public class PdfIngestService {
         List<Document> chunks = splitter.apply(pages);
 
         // Step 3：补充业务元数据（documentId / title），保留原 page_number
+        // chunk_index：切分后的全局顺序号（从 0 开始），用于前端稳定排序展示
         String documentIdStr = String.valueOf(documentId);
-        List<Document> enriched = chunks.stream()
-                .map(chunk -> Document.builder()
-                        .id(chunk.getId())
-                        .text(chunk.getText())
-                        .metadata(new HashMap<>(chunk.getMetadata()))
-                        .metadata(META_DOCUMENT_ID, documentIdStr)
-                        .metadata(META_TITLE, title)
-                        .build())
-                .toList();
+        List<Document> enriched = new ArrayList<>(chunks.size());
+        for (int i = 0; i < chunks.size(); i++) {
+            Document chunk = chunks.get(i);
+            enriched.add(Document.builder()
+                    .id(chunk.getId())
+                    .text(chunk.getText())
+                    .metadata(new HashMap<>(chunk.getMetadata()))
+                    .metadata(META_DOCUMENT_ID, documentIdStr)
+                    .metadata(META_TITLE, title)
+                    .metadata(META_CHUNK_INDEX, i)
+                    .build());
+        }
 
         // Step 4：向量入库（向量化由 VectorStore 实现内部调用 EmbeddingModel 完成）
         vectorStore.add(enriched);

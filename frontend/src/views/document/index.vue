@@ -8,10 +8,20 @@ import {
   uploadDocument
 } from '@/api/document'
 import { formatDateTime, formatFileSize } from '@/utils/format'
+import DocumentDetailDrawer from '@/components/DocumentDetailDrawer.vue'
 
 const loading = ref(false)
 const uploading = ref(false)
 const tableData = ref([])
+
+/* ---------- 详情抽屉 ---------- */
+const drawerVisible = ref(false)
+const activeDocumentId = ref(null)
+
+function openDetail(row) {
+  activeDocumentId.value = row.id
+  drawerVisible.value = true
+}
 
 const query = reactive({
   page: 1,
@@ -155,7 +165,14 @@ onMounted(loadList)
 
       <!-- 列表 -->
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="title" label="文档标题" min-width="200" show-overflow-tooltip />
+        <el-table-column label="文档标题" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <!-- 标题本身即入口：想看的多半就是这一行 -->
+            <el-link type="primary" :underline="false" class="title-link" @click="openDetail(row)">
+              {{ row.title }}
+            </el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="fileName" label="文件名" min-width="180" show-overflow-tooltip />
         <el-table-column label="大小" width="100">
           <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
@@ -173,8 +190,11 @@ onMounted(loadList)
         <el-table-column label="上传时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" @click="openDetail(row)">
+              <el-icon><View /></el-icon>查看
+            </el-button>
             <el-button link type="primary" @click="handleReindex(row)">重建索引</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -198,6 +218,9 @@ onMounted(loadList)
         />
       </div>
     </div>
+
+    <!-- 文档详情抽屉：原文预览 + 文本块 -->
+    <DocumentDetailDrawer v-model="drawerVisible" :document-id="activeDocumentId" />
   </div>
 </template>
 
@@ -212,5 +235,13 @@ onMounted(loadList)
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.title-link {
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 </style>

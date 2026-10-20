@@ -5,10 +5,12 @@ import com.hnkj.qa.common.api.PageResult;
 import com.hnkj.qa.common.enums.ErrorCode;
 import com.hnkj.qa.common.exception.BizException;
 import com.hnkj.qa.config.properties.StorageProperties;
+import com.hnkj.qa.dto.response.ChunkVO;
 import com.hnkj.qa.dto.response.DocumentVO;
 import com.hnkj.qa.dto.response.UploadResult;
 import com.hnkj.qa.entity.Document;
 import com.hnkj.qa.repository.DocumentRepository;
+import com.hnkj.qa.repository.VectorChunkRepository;
 import com.hnkj.qa.service.DocumentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -32,7 +36,8 @@ import org.springframework.data.domain.Pageable;
  * 文档服务实现。
  *
  * <p>已实现：upload（上传+向量入库，失败优雅降级）、page（分页+标题搜索）、
- * detail（详情）、delete（逻辑删除+向量清理）、reindex（重建索引）。</p>
+ * detail（详情）、delete（逻辑删除+向量清理）、reindex（重建索引）、
+ * chunks（文本块列表）、file（PDF 原文预览）。</p>
  */
 @Slf4j
 @Service
@@ -40,6 +45,7 @@ import org.springframework.data.domain.Pageable;
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final VectorChunkRepository vectorChunkRepository;
     private final PdfIngestService pdfIngestService;
     private final StorageProperties storageProperties;
 
@@ -200,8 +206,82 @@ public class DocumentServiceImpl implements DocumentService {
         return toVO(document);
     }
 
-    // ---------- 内部工具 ----------
+    @Override
+    public List<ChunkVO> chunks(Long id) {
+        // 先确认文档存在且未删除，避免对不存在的 ID 返回空数组造成误导
+        findActive(id);
 
+        List<VectorChunkRepository.ChunkRow> rows =
+                vectorChunkRepository.findChunksByDocumentId(String.valueOf(id));
+
+        List<ChunkVO> result = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            VectorChunkRepository.ChunkRow row = rows.get(i);
+            String content = row.getContent() == null ? "" : row.getContent();
+            // 老版本入库的文本块没有 chunk_index 元数据，此时退化为查询顺序号，
+            // 保证前端编号始终连续（SQL 已按页码 + 块序排好）
+            Integer storedIndex = parseIntOrNull(row.getChunkIndex());
+            result.add(ChunkVO.builder()
+                    .id(row.getId())
+                    .pageNumber(parseIntOrNull(row.getPageNumber()))
+                    .index(storedIndex == null ? i + 1 : storedIndex + 1)
+                    .content(content)
+                    .charCount(content.length())
+                    .hasEmbedding(Boolean.TRUE.equals(row.getHasEmbedding()))
+                    .build());
+        }
+        return result;
+    }
+
+    @Override
+    public DocumentFile file(Long id) {
+        Document document = findActive(id);
+        Path path = resolveInsideUploadDir(document.getFilePath(), id);
+
+        if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+            log.warn("文档 [{}] 原文件不可读：{}", id, path);
+            throw new BizException(ErrorCode.DOCUMENT_FILE_MISSING);
+        }
+        try {
+            return new DocumentFile(document.getFileName(), new FileSystemResource(path), Files.size(path));
+        } catch (IOException e) {
+            throw new BizException(ErrorCode.DOCUMENT_FILE_MISSING, "读取文件失败", e);
+        }
+    }
+
+    /**
+     * 把数据库中的文件路径解析为真实路径，并强制其位于上传目录内。
+     *
+     * <p>数据库中存的是上传时自己生成的名字，理论上安全；但若历史数据被人工
+     * 改过、或将来支持自定义路径，直接 {@code Paths.get(filePath)} 就可能被
+     * {@code ../../etc/passwd} 这类路径穿越读取任意文件。这里做一次收口校验，
+     * 让「能否读到文件」只取决于上传目录，而不是数据库字段内容。</p>
+     */
+    private Path resolveInsideUploadDir(String filePath, Long documentId) {
+        Path uploadRoot = Paths.get(storageProperties.getLocalPath())
+                .toAbsolutePath().normalize();
+        Path target = Paths.get(filePath).toAbsolutePath().normalize();
+
+        if (!target.startsWith(uploadRoot)) {
+            log.error("文档 [{}] 的文件路径越界，已拒绝访问：{}", documentId, target);
+            throw new BizException(ErrorCode.FORBIDDEN, "非法的文件路径");
+        }
+        return target;
+    }
+
+    /** 字符串转整数，失败返回 null（metadata 中的值来自 JSON，可能是任意类型） */
+    private Integer parseIntOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    // ---------- 内部工具 ----------
     /** 查询未删除的文档，不存在则抛 DOCUMENT_NOT_FOUND */
     private Document findActive(Long id) {
         return documentRepository.findByIdAndDeletedFalse(id)
@@ -210,13 +290,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     /** 实体 → 列表 VO */
     private DocumentVO toVO(Document document) {
+        Long id = document.getId();
         return DocumentVO.builder()
-                .id(document.getId())
+                .id(id)
                 .title(document.getTitle())
                 .fileName(document.getFileName())
                 .fileSize(document.getFileSize())
                 .pageCount(document.getPageCount())
                 .status(document.getStatus())
+                // 前端据此直接构造 <iframe src> 或"在新标签打开"链接
+                .previewUrl("/documents/" + id + "/file")
                 .createdAt(document.getCreatedAt())
                 .build();
     }

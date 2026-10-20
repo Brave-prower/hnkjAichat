@@ -25,6 +25,7 @@ public enum ErrorCode {
     DOCUMENT_UPLOAD_FAILED(20003, "文件上传失败"),
     DOCUMENT_PARSE_FAILED(20004, "文档解析失败"),
     DOCUMENT_DUPLICATED(20005, "该文档已存在"),
+    DOCUMENT_FILE_MISSING(20006, "原文件已丢失，无法预览"),
 
     // ---------- 问答 ----------
     QUESTION_EMPTY(30001, "提问内容不能为空"),
