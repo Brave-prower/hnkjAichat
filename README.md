@@ -604,6 +604,8 @@ hnjgAichat/
 | POST | `/api/upload` | 上传 PDF（multipart，字段名 `file`），返回统计与 documentId |
 | GET | `/api/documents?page=1&size=10&keyword=` | 文档分页列表（`keyword` 可选，按标题模糊搜索） |
 | GET | `/api/documents/{id}` | 文档详情 |
+| GET | `/api/documents/{id}/chunks` | 文档切分后的文本块列表（页码 / 字数 / 是否已向量化） |
+| GET | `/api/documents/{id}/file` | PDF 原文（`inline` 内嵌预览；`?download=true` 下载） |
 | DELETE | `/api/documents/{id}` | 逻辑删除文档及其向量 |
 | POST | `/api/documents/{id}/reindex` | 重建索引（重新切分 + 向量化） |
 | POST | `/api/qa/ask` | 同步问答（一次返回完整回答 + trace） |
