@@ -9,8 +9,11 @@ FROM node:20-alpine AS builder
 WORKDIR /workspace
 
 # 优先拷贝 package 文件，安装依赖（命中 Docker 缓存）
+# 用 npm ci 而非 npm install：严格按 package-lock.json 安装，
+# 保证任何机器、任何时间构建出的依赖树完全一致（可复现性要求）。
+# --include=dev 是必须的：构建阶段需要 vite / @vitejs/plugin-vue / sass。
 COPY package*.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --include=dev --no-audit --no-fund
 
 # 再拷贝源码并构建
 COPY . .

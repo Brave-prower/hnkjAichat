@@ -15,8 +15,16 @@
   6) 刚好过线     Top1 ≈ 0.614 → PASS（仅高于阈值 0.014）
   7) 刚好不过     Top1 ≈ 0.583 → REJECT（仅低于阈值 0.017）
 
-用法（需先启动后端 mvn spring-boot:run）：
+用法（需先启动后端）：
+    # 本地开发模式（默认端口 8080）
     python docs/scripts/gen-demo-traces.py
+
+    # Docker 模式（前端 80 / 8888，经 Nginx 反代同样可用）
+    # 端口被占用时请换成你实际的宿主机端口
+    python docs/scripts/gen-demo-traces.py http://localhost:8888
+
+    # 也可用环境变量指定
+    CAMPUS_QA_BASE_URL=http://localhost:8888 python docs/scripts/gen-demo-traces.py
 
 输出：
   - 控制台逐条打印 mode / gate / gateReason / Top3 候选分数
@@ -27,7 +35,17 @@ import os
 import sys
 import urllib.request
 
-BASE_URL = "http://localhost:8080/api"
+DEFAULT_BASE_URL = "http://localhost:8080/api"
+# 优先级：命令行参数 > 环境变量 > 默认值
+BASE_URL = (
+    sys.argv[1].rstrip("/")
+    if len(sys.argv) > 1
+    else os.environ.get("CAMPUS_QA_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+)
+# 允许传入不带 /api 的裸地址（如 http://localhost:8888）
+if not BASE_URL.endswith("/api"):
+    BASE_URL += "/api"
+
 SESSION_ID = "demo-trace-showcase"
 
 # (类型, 问题, 预期表现)
